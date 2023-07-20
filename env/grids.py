@@ -28,8 +28,34 @@ class gridWorld(Env):
         self.params = params
         self.grid = np.zeros((params['grid_size']['x'],params['grid_size']['y'],3))
         # divided into subgroups
-        self.sub_groups = []
+        self.num_subgroups = params['sub_groups']['side_division']**2
+        self.subgroup_x_index = np.linspace(0,params['grid_size']['x'],params['sub_groups']['side_division']+1,dtype=int)
+        self.subgroup_y_index = np.linspace(0,params['grid_size']['y'],params['sub_groups']['side_division']+1,dtype=int)
+        
+        #visualize the grid
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_xticks(np.arange(0,params['grid_size']['x']+1,1))
+        self.ax.set_yticks(np.arange(0,params['grid_size']['y']+1,1))
+        self.ax.grid(True)
+        self.ax.set_xlim(0,params['grid_size']['x'])
+        self.ax.set_ylim(0,params['grid_size']['y'])
+        # add different color for different subgroups
+        for i in range(params['sub_groups']['side_division']):
+            for j in range(params['sub_groups']['side_division']):
+                self.ax.add_patch(plt.Rectangle((self.subgroup_x_index[i],self.subgroup_y_index[j]),
+                                                self.subgroup_x_index[i+1]-self.subgroup_x_index[i],self.subgroup_y_index[j+1]-self.subgroup_y_index[j],
+                                                fill=True,color=np.random.rand(3,1).flatten(),alpha=0.5))
+                # make the patch a square
+                self.ax.set_aspect('equal')
+                
+                
+        plt.show()
+        # save the figure
+        self.fig.savefig('grid.png')
+        
 
+        
 
         # randomly initialize targets position
         self.targets = []
@@ -39,3 +65,4 @@ class gridWorld(Env):
 
 
 
+instance=gridWorld({'grid_size':{'x':24,'y':24},'num_targets':5,'sub_groups':{'side_division':3}})
