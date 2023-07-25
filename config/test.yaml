@@ -1,4 +1,15 @@
 config_name: test
 
 env:
+  num_targets: 10
+
+  grid_size:
+    x: 18
+    y: 18
+  
+  obstacles:
+    max_num: 10
+
+  sub_groups:
+    side_division: 3
   
