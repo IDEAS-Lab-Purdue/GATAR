@@ -42,11 +42,16 @@ class gridWorld(baseEnv):
         self.obstacles = []
         for i in range(self.params['sub_groups']['side_division']):
             for j in range(self.params['sub_groups']['side_division']):
-                num_obstacles = random.randint(0,params['obstacles']['max_num'])
+                if 'group_obstacle_matrix' not in params['sub_groups']:
+                    num_obstacles = random.randint(0,params['obstacles']['max_num'])
+                else:
+                    num_obstacles = params['sub_groups']['group_obstacle_matrix'][i][j]
                 for k in range(num_obstacles):
                     self.obstacles.append([random.randint(self.subgroup_x_index[i],self.subgroup_x_index[i+1]-1),
                                         random.randint(self.subgroup_y_index[j],self.subgroup_y_index[j+1]-1)])
                     self.grid[self.obstacles[-1][0],self.obstacles[-1][1],0] = 1
+        
+        self.obstacles = np.array(self.obstacles)
 
         self.targets = []
         for i in range(params['num_targets']):
@@ -57,11 +62,20 @@ class gridWorld(baseEnv):
                     break
             self.targets.append(position)
             self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
-        
-        self.vis()
+        self.targets = np.array(self.targets)
+        self.agents = np.zeros((params['num_agents'],2),dtype=int)
+        self.old_agents = np.zeros((params['num_agents'],2),dtype=int)
+
+        self.vis(store=True)
+        print('Environment initialized')
+        print("Targets' positions: ",self.targets.shape)
+        print("Obstacles' positions: ",self.obstacles.shape)
+        print("Agents' positions: ",self.agents.shape)
+        print('------------------------')
 
 
-    def vis(self,filename=None):
+
+    def vis(self,draw_arrows=False,store=False,filename=None):
         #visualize the grid
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
@@ -74,27 +88,79 @@ class gridWorld(baseEnv):
         self.ax.set_ylim(0,self.params['grid_size']['y'])
         self.ax.set_aspect('equal')
         
-        # add different color for different subgroups
-        for i in range(self.params['sub_groups']['side_division']):
-            for j in range(self.params['sub_groups']['side_division']):
-                self.ax.add_patch(plt.Rectangle((self.subgroup_x_index[i],self.subgroup_y_index[j]),
-                                                self.subgroup_x_index[i+1]-self.subgroup_x_index[i],self.subgroup_y_index[j+1]-self.subgroup_y_index[j],
-                                                fill=True,color=np.random.rand(3,1).flatten(),alpha=0.5))
+        # # add different color for different subgroups
+        # for i in range(self.params['sub_groups']['side_division']):
+        #     for j in range(self.params['sub_groups']['side_division']):
+        #         self.ax.add_patch(plt.Rectangle((self.subgroup_x_index[i],self.subgroup_y_index[j]),
+        #                                         self.subgroup_x_index[i+1]-self.subgroup_x_index[i],self.subgroup_y_index[j+1]-self.subgroup_y_index[j],
+        #                                         fill=True,color=np.random.rand(3,1).flatten(),alpha=0.5))
                 
         # indicate the targets with red dots
-        for target in self.targets:
-            self.ax.plot(target[0]+0.5,target[1]+0.5,'ro',markersize=1)
+        for i in range(self.targets.shape[0]):
+            self.ax.plot(self.targets[i,0]+0.5,self.targets[i,1]+0.5,'ro',markersize=1)
         
         # indicate the obstacles with black blocks
-        for obstacle in self.obstacles:
-            self.ax.add_patch(plt.Rectangle((obstacle[0],obstacle[1]),1,1,fill=True,color='k'))
+        for i in range(self.obstacles.shape[0]):
+            self.ax.add_patch(plt.Rectangle((self.obstacles[i,0],self.obstacles[i,1]),1,1,fill=True,color='k'))
 
-        # save the figure
-        if filename is not None:
-            self.fig.savefig(filename)
-        else:
-            self.fig.savefig('grid.png')
+        # indicate the agents with blue triangles
+        for i in range(self.agents.shape[0]):
+            self.ax.plot(self.agents[i,0]+0.5,self.agents[i,1]+0.5,'b^',markersize=1)
+            if draw_arrows:
+                self.ax.arrow(self.old_agents[i,0]+0.5,self.old_agents[i,1]+0.5,
+                                self.agents[i,0]-self.old_agents[i,0],self.agents[i,1]-self.old_agents[i,1],
+                                head_width=0.1, head_length=0.1, fc='k', ec='k')
 
 
+        #save the figure
+        if store:
+            if filename is not None:
+                self.fig.savefig(filename)
+            else:
+                self.fig.savefig('grid.png')
+        
+        # turn it into numpy array
+        self.fig.canvas.draw()
+        data = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
+        data = data.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
+
+        # close the figure
+        plt.close(self.fig)
+        # return the np array
+        return data
+
+    def step(self,action):
+        
+        directions = np.array([[0, 0], [0, 1], [0, -1], [-1, 0], [1, 0]])
+
+        # 更新位置
+        new_agents = self.agents + directions[action.ravel()]
+
+        # 检查每个机器人是否越界,2D
+        is_out_of_bound_x= np.logical_or(new_agents[:, 0] < 0, new_agents[:, 0] >= self.params['grid_size']['x'])
+        is_out_of_bound_y= np.logical_or(new_agents[:, 1] < 0, new_agents[:, 1] >= self.params['grid_size']['y'])
+        is_out_of_bound = is_out_of_bound_x | is_out_of_bound_y
+
+        # 以及是否撞到障碍物
+        
+        is_hit_obstacles = self.grid[new_agents[:, 0], new_agents[:, 1], 0] == 1
+
+        # 将越界的agent放回原来的位置
+        new_agents[is_out_of_bound | is_hit_obstacles] = self.agents[is_out_of_bound | is_hit_obstacles]
+        
+
+        # 检查是否到达目标
+        is_reach_target = self.grid[new_agents[:, 0], new_agents[:, 1], 2] == 1
+        
+
+        # 将已经被占领的目标移除
+        self.grid[new_agents[is_reach_target, 0], new_agents[is_reach_target, 1], 2] = 0
+        
+        # 更新targets
+
+        self.targets=np.array(np.where(self.grid[:,:,2]==1)).T
+
+        self.old_agents=self.agents
+        self.agents = new_agents
 
 
