@@ -123,30 +123,30 @@ class gridWorld(baseEnv):
         
         directions = np.array([[0, 0], [0, 1], [0, -1], [-1, 0], [1, 0]])
 
-        # 更新位置
+        # update agents' position
         new_agents = self.agents + directions[action.ravel()]
 
-        # 检查每个机器人是否越界,2D
+        # check whether the agents are out of bound
         is_out_of_bound_x= np.logical_or(new_agents[:, 0] < 0, new_agents[:, 0] >= self.params['grid_size']['x'])
         is_out_of_bound_y= np.logical_or(new_agents[:, 1] < 0, new_agents[:, 1] >= self.params['grid_size']['y'])
         is_out_of_bound = is_out_of_bound_x | is_out_of_bound_y
 
-        # 以及是否撞到障碍物
+        # check whether the agents hit obstacles
         
         is_hit_obstacles = self.grid[new_agents[:, 0], new_agents[:, 1], 0] == 1
 
-        # 将越界的agent放回原来的位置
+        # make the conflicting agents stay still
         new_agents[is_out_of_bound | is_hit_obstacles] = self.agents[is_out_of_bound | is_hit_obstacles]
         
 
-        # 检查是否到达目标
+        # check whether the agents reach the targets
         is_reach_target = self.grid[new_agents[:, 0], new_agents[:, 1], 2] == 1
         
 
-        # 将已经被占领的目标移除
+        # remove the targets that are reached
         self.grid[new_agents[is_reach_target, 0], new_agents[is_reach_target, 1], 2] = 0
         
-        # 更新targets
+        # update the targets list
 
         self.targets=np.array(np.where(self.grid[:,:,2]==1)).T
 
