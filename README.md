@@ -7,7 +7,7 @@
 - [ ] Environment
 
     - [x] Environment Initialization
-    - [ ] Environment Update and reset
+    - [x] Environment Update and reset
     - [ ] Agents' observation
 
 - [ ] Preprocessing

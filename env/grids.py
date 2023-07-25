@@ -53,18 +53,8 @@ class gridWorld(baseEnv):
         
         self.obstacles = np.array(self.obstacles)
 
-        self.targets = []
-        for i in range(params['num_targets']):
-            # randomly generate a target position that is not occupied by obstacles
-            while True:
-                position = [random.randint(0,params['grid_size']['x']-1),random.randint(0,params['grid_size']['y']-1)]
-                if self.grid[position[0],position[1],0] == 0:
-                    break
-            self.targets.append(position)
-            self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
-        self.targets = np.array(self.targets)
-        self.agents = np.zeros((params['num_agents'],2),dtype=int)
-        self.old_agents = np.zeros((params['num_agents'],2),dtype=int)
+        self.__assign_targets_agents()
+        
 
         self.vis(store=True)
         print('Environment initialized')
@@ -163,4 +153,22 @@ class gridWorld(baseEnv):
         self.old_agents=self.agents
         self.agents = new_agents
 
+    def __assign_targets_agents(self):
+        self.targets = []
+        for i in range(self.params['num_targets']):
+            # randomly generate a target position that is not occupied by obstacles
+            while True:
+                position = [random.randint(0,self.params['grid_size']['x']-1),random.randint(0,self.params['grid_size']['y']-1)]
+                if self.grid[position[0],position[1],0] == 0:
+                    break
+            self.targets.append(position)
+            self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
+        self.targets = np.array(self.targets)
+        self.agents = np.zeros((self.params['num_agents'],2),dtype=int)
+        self.old_agents = np.zeros((self.params['num_agents'],2),dtype=int)
 
+
+    def reset(self):
+        # restore agents and targets keep obstacles
+        self.grid[:,:,2]=0
+        self.__assign_targets_agents()

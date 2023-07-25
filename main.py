@@ -15,12 +15,15 @@ instance = env.grids.gridWorld(configs['env'])
 
 # render the process to a video
 frames=[]
-for step in tqdm(range(100)):
+for round in tqdm(range(3)):
+    for step in tqdm(range(50)):
 
-    action=np.random.randint(0,5,agent_num)
-    instance.step(action)
-    frame=instance.vis(draw_arrows=True)
-    frames.append(frame)
+        action=np.random.randint(0,5,agent_num)
+        instance.step(action)
+        frame=instance.vis(draw_arrows=True)
+        frames.append(frame)
+    
+    instance.reset()
 
 # save the video
 imageio.mimsave('test.gif', frames, 'GIF', duration = 0.1)
