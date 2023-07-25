@@ -4,13 +4,14 @@
 
 ## Checking List
 
-[] Environment
-    [x] Environment Initialization
-    [] Environment Update and reset
-    [] Agents' observation
+- [ ] Environment
 
-[] Preprocessing
+    - [x] Environment Initialization
+    - [ ] Environment Update and reset
+    - [ ] Agents' observation
 
-[] Message Passing and Fusion
+- [ ] Preprocessing
 
-[] RL Framework
+- [ ] Message Passing and Fusion
+
+- [ ] RL Framework
