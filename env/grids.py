@@ -56,21 +56,34 @@ class gridWorld(baseEnv):
 
     def __get_observation(self,agent_id):
         ego_position = self.agents[agent_id]
-        observation_area_index_x= ego_position[0]+np.arange(-self.sensing_range,self.sensing_range+1)
-        observation_area_index_y= ego_position[1]+np.arange(-self.sensing_range,self.sensing_range+1)
-        observation_area_index_x = np.clip(observation_area_index_x,0,self.params['grid_size']['x']-1)
-        observation_area_index_y = np.clip(observation_area_index_y,0,self.params['grid_size']['y']-1)
-        observation_area = self.grid[observation_area_index_x,:][:,observation_area_index_y]
+        observation_area_index_x= ego_position[0]+np.arange(-self.sensing_range,self.sensing_range+1)+self.sensing_range
+        observation_area_index_y= ego_position[1]+np.arange(-self.sensing_range,self.sensing_range+1)+self.sensing_range
+        
+        # padding the grid
+
+        temp_grid=np.pad(self.grid,((self.sensing_range,self.sensing_range),(self.sensing_range,self.sensing_range),(0,0)),'constant',constant_values=999)
+        
+        observation_area = temp_grid[observation_area_index_x,:,:][:,observation_area_index_y,:]
+        complete_map=999*np.ones((self.params['grid_size']['x'],self.params['grid_size']['y'],3))   
+        complete_map_pad=np.pad(complete_map,((self.sensing_range,self.sensing_range),(self.sensing_range,self.sensing_range),(0,0)),'constant',constant_values=999)
+        
+        complete_map_pad[ego_position[0]:ego_position[0]+2*self.sensing_range+1,ego_position[1]:ego_position[1]+2*self.sensing_range+1,:]=observation_area
+        complete_map=complete_map_pad[self.sensing_range:self.sensing_range+self.params['grid_size']['x'],                                    self.sensing_range:self.sensing_range+self.params['grid_size']['y'],:]
+        return complete_map
 
         
 
 
 
 
-    def vis(self,draw_arrows=False,store=False,filename=None):
+    def vis(self,draw_arrows=False,store=False,filename=None,mode='global&local',agent_id=0):
         #visualize the grid
         self.fig = plt.figure()
-        self.ax = self.fig.add_subplot(111)
+        if mode=='global&local':
+            self.ax = self.fig.add_subplot(121)
+            self.ax2 = self.fig.add_subplot(122)
+        elif mode=='global':
+            self.ax = self.fig.add_subplot(111)
         self.ax.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
         self.ax.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
         self.ax.set_xticklabels([])
@@ -103,8 +116,34 @@ class gridWorld(baseEnv):
                                 self.agents[i,0]-self.old_agents[i,0],self.agents[i,1]-self.old_agents[i,1],
                                 head_width=0.1, head_length=0.1, fc='k', ec='k')
 
+        #make the local observation area of agent 0 yellow
 
-        #save the figure
+        observation_test=self.__get_observation(0)
+        # add subplot to draw the observation area
+        self.ax2.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
+        self.ax2.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
+        self.ax2.set_xticklabels([])
+        self.ax2.set_yticklabels([])
+        self.ax2.grid(True)
+        self.ax2.set_xlim(0,self.params['grid_size']['x'])
+        self.ax2.set_ylim(0,self.params['grid_size']['y'])
+        self.ax2.set_aspect('equal')
+        # draw observed obstacles
+        local_obstacles = np.where(observation_test[:,:,0]==1)
+        for i in range(len(local_obstacles[0])):
+            self.ax2.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
+        # draw observed targets
+        local_targets = np.where(observation_test[:,:,2]==1)
+        for i in range(len(local_targets[0])):
+            self.ax2.plot(local_targets[0][i]+0.5,local_targets[1][i]+0.5,'ro',markersize=1)
+        # add a dim yellow background on the observed area
+        observed_area = np.where(observation_test[:,:,0]<=1)
+        for i in range(len(observed_area[0])):
+            self.ax2.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='y',alpha=0.3))
+
+
+
+        # save the figure
         if store:
             if filename is not None:
                 self.fig.savefig(filename)
@@ -116,9 +155,8 @@ class gridWorld(baseEnv):
         data = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
 
-        # close the figure
         plt.close(self.fig)
-        # return the np array
+        
         return data
 
     def step(self,action):
@@ -133,12 +171,12 @@ class gridWorld(baseEnv):
         is_out_of_bound_y= np.logical_or(new_agents[:, 1] < 0, new_agents[:, 1] >= self.params['grid_size']['y'])
         is_out_of_bound = is_out_of_bound_x | is_out_of_bound_y
 
+        new_agents[is_out_of_bound] = self.agents[is_out_of_bound]
         # check whether the agents hit obstacles
-        
         is_hit_obstacles = self.grid[new_agents[:, 0], new_agents[:, 1], 0] == 1
 
         # make the conflicting agents stay still
-        new_agents[is_out_of_bound | is_hit_obstacles] = self.agents[is_out_of_bound | is_hit_obstacles]
+        new_agents[is_hit_obstacles] = self.agents[is_hit_obstacles]
         
 
         # check whether the agents reach the targets
@@ -174,6 +212,9 @@ class gridWorld(baseEnv):
         self.grid[:,:,2]=0
         self.__assign_targets_agents()
 
-    def get_local_observation():
-        pass
+    def get_local_observation(self,agent_id):
+        
+        map = self.__get_observation(agent_id)
+        return map
+        
 
