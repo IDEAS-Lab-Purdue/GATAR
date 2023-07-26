@@ -1,25 +1,9 @@
-
 import numpy as np
 import random
-import math
 import matplotlib.pyplot as plt
+from env.base import baseEnv
 
 
-# base class for environment
-
-class baseEnv():
-
-    def __init__(self):
-        pass
-        
-    def reset(self):
-        pass
-
-    def step(self, action):
-        pass
-
-    def vis(self):
-        pass
 
 # extended class for grid world
 class gridWorld(baseEnv):
@@ -184,7 +168,6 @@ class gridWorld(baseEnv):
         self.targets = np.array(self.targets)
         self.agents = np.zeros((self.params['num_agents'],2),dtype=int)
         self.old_agents = np.zeros((self.params['num_agents'],2),dtype=int)
-
 
     def reset(self):
         # restore agents and targets keep obstacles
