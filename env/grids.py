@@ -32,9 +32,13 @@ class gridWorld(baseEnv):
         self.num_subgroups = params['sub_groups']['side_division']**2
         self.subgroup_x_index = np.linspace(0,params['grid_size']['x'],params['sub_groups']['side_division']+1,dtype=int)
         self.subgroup_y_index = np.linspace(0,params['grid_size']['y'],params['sub_groups']['side_division']+1,dtype=int)
-        
-        
-
+        # observation storage, (num_agents, H,W,C) 
+        # Channel:
+        # 2-obstacle
+        # 1-agent
+        # 0-target
+        self.agents_observation=np.zeros((params['num_agents'],params['grid_size']['x'],params['grid_size']['y'],3))
+        self.sensing_range = params['sensing_range']
         # randomly initialize targets position
         
         
@@ -55,6 +59,9 @@ class gridWorld(baseEnv):
 
         self.__assign_targets_agents()
         
+        # generate individual observation
+        for i in range(self.params['num_agents']):
+            self.agents_observation[i] = self.__get_observation(i)
 
         self.vis(store=True)
         print('Environment initialized')
@@ -62,6 +69,17 @@ class gridWorld(baseEnv):
         print("Obstacles' positions: ",self.obstacles.shape)
         print("Agents' positions: ",self.agents.shape)
         print('------------------------')
+
+    def __get_observation(self,agent_id):
+        ego_position = self.agents[agent_id]
+        observation_area_index_x= ego_position[0]+np.arange(-self.sensing_range,self.sensing_range+1)
+        observation_area_index_y= ego_position[1]+np.arange(-self.sensing_range,self.sensing_range+1)
+        observation_area_index_x = np.clip(observation_area_index_x,0,self.params['grid_size']['x']-1)
+        observation_area_index_y = np.clip(observation_area_index_y,0,self.params['grid_size']['y']-1)
+        observation_area = self.grid[observation_area_index_x,:][:,observation_area_index_y]
+
+        
+
 
 
 
@@ -172,3 +190,7 @@ class gridWorld(baseEnv):
         # restore agents and targets keep obstacles
         self.grid[:,:,2]=0
         self.__assign_targets_agents()
+
+    def get_local_observation():
+        pass
+

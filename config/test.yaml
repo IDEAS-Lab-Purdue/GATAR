@@ -5,6 +5,8 @@ env:
 
   num_agents: 10
 
+  sensing_range: 3
+
   grid_size:
     x: 18
     y: 18
