@@ -4,11 +4,11 @@
 
 ## Checking List
 
-- [ ] Environment
+- [x] Environment
 
     - [x] Environment Initialization
     - [x] Environment Update and reset
-    - [ ] Agents' observation
+    - [x] Agents' observation
 
 - [ ] Preprocessing
 
