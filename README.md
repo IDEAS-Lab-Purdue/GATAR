@@ -4,7 +4,7 @@
 
 ## Checking List
 
-- [x] Environment
+- [ ] Environment
 
     - [x] Environment Initialization
     - [x] Environment Update and reset
@@ -38,7 +38,6 @@ graph LR
     end
 
     subgraph neighborhood
-    direction LR
         C
         D
         C-->D
@@ -49,7 +48,6 @@ graph LR
          
         B
         A
-    direction LR
         A-->B
         E
     end

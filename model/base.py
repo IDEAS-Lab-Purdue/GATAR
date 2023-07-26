@@ -6,5 +6,5 @@ import torch.nn.functional as F
 
 class baseNet(nn.Module):
 
-    pass
+    raise NotImplementedError
     

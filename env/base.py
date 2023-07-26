@@ -3,13 +3,17 @@
 class baseEnv():
 
     def __init__(self):
-        pass
+        
+        raise NotImplementedError
         
     def reset(self):
-        pass
+        
+        raise NotImplementedError
 
     def step(self, action):
-        pass
+        
+        raise NotImplementedError
 
     def vis(self):
-        pass
+        
+        raise NotImplementedError

@@ -9,7 +9,7 @@ from env.base import baseEnv
 class gridWorld(baseEnv):
 
     def __init__(self,params):
-        super().__init__()
+        
         self.params = params
         self.grid = np.zeros((params['grid_size']['x'],params['grid_size']['y'],3))
         # divided into subgroups
