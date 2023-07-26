@@ -58,7 +58,6 @@ class gridWorld(baseEnv):
         complete_map=complete_map_pad[self.sensing_range:self.sensing_range+self.params['grid_size']['x'],                                    self.sensing_range:self.sensing_range+self.params['grid_size']['y'],:]
         return complete_map
 
-        
     def __assign_obstacles(self):
         # assign obstacles to each subgroup
         self.obstacles = []
@@ -75,7 +74,21 @@ class gridWorld(baseEnv):
         
         self.obstacles = np.array(self.obstacles)
 
-
+    def __assign_targets_agents(self):
+        self.targets = []
+        for i in range(self.params['num_targets']):
+            # randomly generate a target position that is not occupied by obstacles
+            while True:
+                position = [random.randint(0,self.params['grid_size']['x']-1),random.randint(0,self.params['grid_size']['y']-1)]
+                if self.grid[position[0],position[1],0] == 0:
+                    break
+            self.targets.append(position)
+            self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
+        self.targets = np.array(self.targets)
+        self.agents = np.zeros((self.params['num_agents'],2),dtype=int)
+        self.old_agents = np.zeros((self.params['num_agents'],2),dtype=int)
+        for i in range(self.params['num_agents']):
+            self.grid[self.targets[i,0],self.targets[i,1],1] = 1
 
     def vis(self,draw_arrows=False,store=False,filename=None,vis_agent_id=0):
         #visualize the grid
@@ -200,23 +213,7 @@ class gridWorld(baseEnv):
         self.grid[:,:,1]=0
         for i in range(self.params['num_agents']):
             self.grid[self.agents[i,0],self.agents[i,1],1] = 1
-
-    def __assign_targets_agents(self):
-        self.targets = []
-        for i in range(self.params['num_targets']):
-            # randomly generate a target position that is not occupied by obstacles
-            while True:
-                position = [random.randint(0,self.params['grid_size']['x']-1),random.randint(0,self.params['grid_size']['y']-1)]
-                if self.grid[position[0],position[1],0] == 0:
-                    break
-            self.targets.append(position)
-            self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
-        self.targets = np.array(self.targets)
-        self.agents = np.zeros((self.params['num_agents'],2),dtype=int)
-        self.old_agents = np.zeros((self.params['num_agents'],2),dtype=int)
-        for i in range(self.params['num_agents']):
-            self.grid[self.targets[i,0],self.targets[i,1],1] = 1
-
+ 
     def reset(self):
         # restore agents and targets keep obstacles
         self.grid[:,:,2]=0
