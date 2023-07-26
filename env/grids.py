@@ -26,20 +26,7 @@ class gridWorld(baseEnv):
         # randomly initialize targets position
         
         
-        # assign obstacles to each subgroup
-        self.obstacles = []
-        for i in range(self.params['sub_groups']['side_division']):
-            for j in range(self.params['sub_groups']['side_division']):
-                if 'group_obstacle_matrix' not in params['sub_groups']:
-                    num_obstacles = random.randint(0,params['obstacles']['max_num'])
-                else:
-                    num_obstacles = params['sub_groups']['group_obstacle_matrix'][i][j]
-                for k in range(num_obstacles):
-                    self.obstacles.append([random.randint(self.subgroup_x_index[i],self.subgroup_x_index[i+1]-1),
-                                        random.randint(self.subgroup_y_index[j],self.subgroup_y_index[j+1]-1)])
-                    self.grid[self.obstacles[-1][0],self.obstacles[-1][1],0] = 1
-        
-        self.obstacles = np.array(self.obstacles)
+        self.__assign_obstacles()
 
         self.__assign_targets_agents()
         
@@ -72,13 +59,28 @@ class gridWorld(baseEnv):
         return complete_map
 
         
+    def __assign_obstacles(self):
+        # assign obstacles to each subgroup
+        self.obstacles = []
+        for i in range(self.params['sub_groups']['side_division']):
+            for j in range(self.params['sub_groups']['side_division']):
+                if 'group_obstacle_matrix' not in self.params['sub_groups']:
+                    num_obstacles = random.randint(0,self.params['obstacles']['max_num'])
+                else:
+                    num_obstacles = self.params['sub_groups']['group_obstacle_matrix'][i][j]
+                for k in range(num_obstacles):
+                    self.obstacles.append([random.randint(self.subgroup_x_index[i],self.subgroup_x_index[i+1]-1),
+                                        random.randint(self.subgroup_y_index[j],self.subgroup_y_index[j+1]-1)])
+                    self.grid[self.obstacles[-1][0],self.obstacles[-1][1],0] = 1
+        
+        self.obstacles = np.array(self.obstacles)
 
 
 
-
-    def vis(self,draw_arrows=False,store=False,filename=None,mode='global&local',agent_id=0):
+    def vis(self,draw_arrows=False,store=False,filename=None,vis_agent_id=0):
         #visualize the grid
         self.fig = plt.figure()
+        mode=self.params['vis']['mode']
         if mode=='global&local':
             self.ax = self.fig.add_subplot(121)
             self.ax2 = self.fig.add_subplot(122)
@@ -117,29 +119,31 @@ class gridWorld(baseEnv):
                                 head_width=0.1, head_length=0.1, fc='k', ec='k')
 
         #make the local observation area of agent 0 yellow
-
-        observation_test=self.__get_observation(0)
-        # add subplot to draw the observation area
-        self.ax2.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
-        self.ax2.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
-        self.ax2.set_xticklabels([])
-        self.ax2.set_yticklabels([])
-        self.ax2.grid(True)
-        self.ax2.set_xlim(0,self.params['grid_size']['x'])
-        self.ax2.set_ylim(0,self.params['grid_size']['y'])
-        self.ax2.set_aspect('equal')
-        # draw observed obstacles
-        local_obstacles = np.where(observation_test[:,:,0]==1)
-        for i in range(len(local_obstacles[0])):
-            self.ax2.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
-        # draw observed targets
-        local_targets = np.where(observation_test[:,:,2]==1)
-        for i in range(len(local_targets[0])):
-            self.ax2.plot(local_targets[0][i]+0.5,local_targets[1][i]+0.5,'ro',markersize=1)
-        # add a dim yellow background on the observed area
-        observed_area = np.where(observation_test[:,:,0]<=1)
-        for i in range(len(observed_area[0])):
-            self.ax2.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='y',alpha=0.3))
+        if mode=='global&local':
+            observation_test=self.__get_observation(agent_id=vis_agent_id)
+            # add subplot to draw the observation area
+            self.ax2.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
+            self.ax2.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
+            self.ax2.set_xticklabels([])
+            self.ax2.set_yticklabels([])
+            self.ax2.grid(True)
+            self.ax2.set_xlim(0,self.params['grid_size']['x'])
+            self.ax2.set_ylim(0,self.params['grid_size']['y'])
+            self.ax2.set_aspect('equal')
+            # draw observed obstacles
+            local_obstacles = np.where(observation_test[:,:,0]==1)
+            for i in range(len(local_obstacles[0])):
+                self.ax2.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
+            # draw observed targets
+            local_targets = np.where(observation_test[:,:,2]==1)
+            for i in range(len(local_targets[0])):
+                self.ax2.plot(local_targets[0][i]+0.5,local_targets[1][i]+0.5,'ro',markersize=1)
+            # add a dim yellow background on the observed area
+            observed_area = np.where(observation_test[:,:,0]<=1)
+            for i in range(len(observed_area[0])):
+                self.ax2.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='y',alpha=0.3))
+            # draw the ego agent
+            self.ax2.plot(self.agents[vis_agent_id,0]+0.5,self.agents[vis_agent_id,1]+0.5,'b^',markersize=1)
 
 
 
@@ -192,6 +196,10 @@ class gridWorld(baseEnv):
 
         self.old_agents=self.agents
         self.agents = new_agents
+        # update the grid
+        self.grid[:,:,1]=0
+        for i in range(self.params['num_agents']):
+            self.grid[self.agents[i,0],self.agents[i,1],1] = 1
 
     def __assign_targets_agents(self):
         self.targets = []
@@ -206,6 +214,8 @@ class gridWorld(baseEnv):
         self.targets = np.array(self.targets)
         self.agents = np.zeros((self.params['num_agents'],2),dtype=int)
         self.old_agents = np.zeros((self.params['num_agents'],2),dtype=int)
+        for i in range(self.params['num_agents']):
+            self.grid[self.targets[i,0],self.targets[i,1],1] = 1
 
     def reset(self):
         # restore agents and targets keep obstacles

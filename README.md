@@ -9,6 +9,7 @@
     - [x] Environment Initialization
     - [x] Environment Update and reset
     - [x] Agents' observation
+    - [ ] Other heterogeneity setting
 
 - [ ] Preprocessing
 

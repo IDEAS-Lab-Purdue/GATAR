@@ -16,6 +16,9 @@ env:
 
   sub_groups:
     side_division: 3
-    #group_obstacle_matrix: [[5,5,10],[5,5,10],[10,10,10]]
+    group_obstacle_matrix: [[5,5,10],[5,5,10],[10,10,10]]
+  
+  vis:
+    mode: global&local
 
   
