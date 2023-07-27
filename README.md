@@ -12,8 +12,12 @@
     - [ ] Other heterogeneity setting
 
 - [ ] Preprocessing
+  - [ ] Agent
+  - [ ] Preprocessor
 
-- [ ] Message Passing and Fusion
+- [ ] Message Passing and Fusioning
+
+
 
 - [ ] RL Framework
 
