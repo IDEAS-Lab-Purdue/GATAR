@@ -7,6 +7,7 @@
 - [ ] Environment
 
     - [x] Environment Initialization
+      - [ ] add store and read part
     - [x] Environment Update and reset
     - [x] Agents' observation
     - [ ] Other heterogeneity setting
@@ -20,6 +21,9 @@
 
 
 - [ ] RL Framework
+
+# Experiment
+
 
 
 ## Pipeline
