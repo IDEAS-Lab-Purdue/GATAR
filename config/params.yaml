@@ -1,0 +1,58 @@
+config_name: test
+
+env:
+  num_targets: 10
+
+  num_agents: 5
+
+  grid_size:
+    x: &x 30
+    y: &y 30
+
+  sub_groups:
+    side_division: 3
+    group_obstacle_matrix: [[0,0,5],[0,5,8],[10,8,15]]
+  
+  vis:
+    mode: global&local
+
+agent:
+  UAV1:
+    type: UGV
+    num: 3
+    sensing_range: 4
+    max_speed: 1
+  UGV1:
+    type: UAV
+    num: 2
+    sensing_range: 4
+    max_speed: 1
+
+network:
+  x: *x
+  y: *y
+  CNNEncoder:
+    input_channel: 3
+    output_channel: 3
+    channel: [3,8,3]
+    kernel_size: [3,3]
+    activation: relu
+
+  Flatten:
+    output_feature: 128
+    activation: relu
+  
+  Fusion:
+    model: GAT
+    shortcut: True
+    K: 2
+    heads: 3
+    input_feature: [128,16,8]
+    output_feature: [8,8,4]
+    activation: relu
+
+  MLP:
+    
+    output_feature: [12,64,32,16,5]
+    activation: relu
+    

@@ -32,13 +32,15 @@ def parser():
 if __name__ == '__main__':
     
     args = parser()
-    params = yaml.load(open(args.config,'r'),Loader=yaml.FullLoader)['env']
+    params = yaml.load(open(args.config,'r'),Loader=yaml.FullLoader)
     map_num = 1000
      
-    size_x = params['grid_size']['x']
-    size_y = params['grid_size']['y']
+    size_x = params['env']['grid_size']['x']
+    size_y = params['env']['grid_size']['y']
+    name=params['config_name']
+    agent_num = params['env']['num_agents']
      
-    data_path = f'data/{size_x}x{size_y}/'
+    data_path = f'data/{name}_{size_x}x{size_y}_agent{agent_num}/'
     if not os.path.exists(data_path):
         os.makedirs(data_path)
     
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     os.system(f'cp {args.config} {data_path}params.yaml')
 
     map_dict = {}
-
+    params= params['env']
     for i in range(map_num):
         obstacles = assign_obstacles()
         map_dict.update({i:obstacles})

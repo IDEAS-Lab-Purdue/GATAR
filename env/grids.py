@@ -5,35 +5,27 @@ from env.base import baseEnv
 import os
 from tcod import libtcodpy
 import tcod
+import torch
 
 
 # extended class for grid world
 class gridWorld(baseEnv):
 
-    def __init__(self,params,obstacles,agents):
+    def __init__(self,params,obstacles):
         
         self.params = params
         self.grid = np.zeros((params['grid_size']['x'],params['grid_size']['y'],3))
-        self.agents_observation=np.zeros((len(agents),params['grid_size']['x'],params['grid_size']['y'],3))
+        self.agents_observation=np.zeros((params['num_agents'],params['grid_size']['x'],params['grid_size']['y'],3))
+        self.agents_pos = np.zeros((params['num_agents'],2),dtype=int)
         self.obstacles = np.array(obstacles)
         self.grid[self.obstacles[:,0],self.obstacles[:,1],0] = 1
-        self.agents = agents
-        self.agents_pos = np.zeros((len(agents),2)).astype(int)
         self.__assign_targets()
-        self.vis(store=True)
+        #self.vis(store=True)
         print('Environment initialized')
         print("Targets' positions: ",self.targets.shape)
         print("Obstacles' positions: ",self.obstacles.shape)
         print("Agents' positions: ",self.agents_pos.shape)
         print('------------------------')
-
-    def __get_observation(self,agent_id):
-        
-        agent=self.agents[agent_id]
-        observation=agent.observe(self.grid)
-        return observation
-
-    
 
     def __assign_targets(self):
         self.targets = []
@@ -48,7 +40,7 @@ class gridWorld(baseEnv):
         self.targets = np.array(self.targets)
         
 
-    def vis(self,draw_arrows=False,store=False,filename=None,vis_agent_id=0):
+    def vis(self,obs,draw_arrows=False,store=False,filename=None):
         #visualize the grid
         self.fig = plt.figure()
         mode=self.params['vis']['mode']
@@ -90,7 +82,8 @@ class gridWorld(baseEnv):
     
         #make the local observation area of agent 0 yellow
         if mode=='global&local':
-            observation_test=self.__get_observation(agent_id=vis_agent_id)
+            vis_agent_id=0
+            observation_test=obs[0]
             # add subplot to draw the observation area
             self.ax2.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
             self.ax2.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
@@ -113,10 +106,10 @@ class gridWorld(baseEnv):
             for i in range(len(observed_area[0])):
                 self.ax2.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
             # draw the ego agent
-            self.ax2.plot(self.agents[vis_agent_id].pos[0]+0.5,self.agents[vis_agent_id].pos[1]+0.5,'b^',markersize=1)
+            self.ax2.plot(self.agents_pos[vis_agent_id,0]+0.5,self.agents_pos[vis_agent_id,1]+0.5,'b^',markersize=1)
             
             vis_agent_id=-1
-            observation_test=self.__get_observation(agent_id=vis_agent_id)
+            observation_test=obs[vis_agent_id]
             # add subplot to draw the observation area
             self.ax3.set_xticks(np.arange(0,self.params['grid_size']['x']+1,1))
             self.ax3.set_yticks(np.arange(0,self.params['grid_size']['y']+1,1))
@@ -139,7 +132,7 @@ class gridWorld(baseEnv):
             for i in range(len(observed_area[0])):
                 self.ax3.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
             # draw the ego agent
-            self.ax3.plot(self.agents[vis_agent_id].pos[0]+0.5,self.agents[vis_agent_id].pos[1]+0.5,'b^',markersize=1)
+            self.ax3.plot(self.agents_pos[vis_agent_id,0]+0.5,self.agents_pos[vis_agent_id,1]+0.5,'b^',markersize=1)
 
 
 
@@ -159,48 +152,48 @@ class gridWorld(baseEnv):
         
         return data
 
-    def step(self,action):
+    def step(self,agents,model):
         
-        directions = np.array([[0, 0], [0, 1], [0, -1], [-1, 0], [1, 0]])
+        action=agents.step(self.grid,model)
+
+
+        directions = np.array([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]])
 
         # update agents' position
-        new_agents_pos = self.agents_pos+ directions[action.ravel()]
+        new_agents_pos = agents.agents_pos+ directions[action.ravel()]
 
         # check whether the agents are out of bound
         is_out_of_bound_x= np.logical_or(new_agents_pos[:, 0] < 0, new_agents_pos[:, 0] >= self.params['grid_size']['x'])
         is_out_of_bound_y= np.logical_or(new_agents_pos[:, 1] < 0, new_agents_pos[:, 1] >= self.params['grid_size']['y'])
         is_out_of_bound = is_out_of_bound_x | is_out_of_bound_y
 
-        new_agents_pos[is_out_of_bound] = self.agents_pos[is_out_of_bound]
+        new_agents_pos[is_out_of_bound] = agents.agents_pos[is_out_of_bound]
+
+        new_agents_pos = new_agents_pos.astype(int)
         # check whether the agents hit obstacles
         is_hit_obstacles = self.grid[new_agents_pos[:, 0], new_agents_pos[:, 1], 0] == 1
         
-        for i in range(len(self.agents)):
-            if self.agents[i].type=="UAV":
-                is_hit_obstacles[i]=False
-        
+        for i in range(len(agents.agents_type)):
+            if agents.agents_type[i]=="UAV":
+                is_hit_obstacles[i]=False  
         # make the conflicting agents stay still
         new_agents_pos[is_hit_obstacles] = self.agents_pos[is_hit_obstacles]
-        
-
         # check whether the agents reach the targets
         is_reach_target = self.grid[new_agents_pos[:, 0], new_agents_pos[:, 1], 2] == 1
         
-
         # remove the targets that are reached
         self.grid[new_agents_pos[is_reach_target, 0], new_agents_pos[is_reach_target, 1], 2] = 0
-        
         # update the targets list
-
         self.targets=np.array(np.where(self.grid[:,:,2]==1)).T
-
-        self.old_agents=self.agents
         self.agents_pos = new_agents_pos
+        agents.agents_pos = new_agents_pos.astype(int)
         # update the grid
         self.grid[:,:,1]=0
-        for i in range(len(self.agents)):
+        for i in range(len(agents.agents_type)):
             self.grid[self.agents_pos[i,0],self.agents_pos[i,1],1] = 1
-            self.agents[i].pos = self.agents_pos[i]
+        
+
+            
         
  
     def reset(self):
