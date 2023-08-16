@@ -4796,7 +4796,7 @@ class GraphFilterBatchAttentional(nn.Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def addGSO(self, S):
-        # Every S has 4 dimensions.
+        
         assert len(S.shape) == 4
         # S is of shape B x E x N x N
         assert S.shape[1] == self.E

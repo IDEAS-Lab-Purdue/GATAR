@@ -18,20 +18,28 @@ class MRS():
         if self.agents_pos is None or len(self.agents_pos)!=self.agents_pos.shape[0]:
             raise Exception('Agents Not Properly Created')
         self.agents_observation =np.zeros([len(self.agents_pos),config['env']['grid_size']['x'],config['env']['grid_size']['y'],3])
-        print('MRS Created')
-        print(self.agents_pos.shape)
-        print(self.agents_observation.shape)
-        print(self.agents_type)
-
+        self.agent_num=len(self.agents_type)
+        
+    def reset(self):
+        self.agents_observation =np.zeros([len(self.agents_pos),self.config['env']['grid_size']['x'],self.config['env']['grid_size']['y'],3])
+        if self.config['env']['random_start']:
+            self.agents_pos = np.random.randint(0,self.config['env']['grid_size']['x'],[self.agent_num,2])
+        else:
+            self.agents_pos = np.zeros([self.agent_num,2]).astype(int)
+        
     def create_agents(self,params):
 
         total_num = 0
+        random_start=self.config['env']['random_start']
         for spec in self.config['agent'].values():
             numInspec=spec['num']
+            
             for i in range(numInspec):
                 self.agents_type.append(spec['type'])
                 self.sensing_ranges.append(spec['sensing_range'])
                 total_num+=1
+        if random_start:
+            self.agent_pos = np.random.randint(0,self.config['env']['grid_size']['x'],[total_num,2])
         self.agents_pos = np.zeros([total_num,2]).astype(int)
         
     def __single_observe(self,grid,agent_id):
@@ -46,7 +54,8 @@ class MRS():
             obs=self.__UGVObserve(grid,agent_pos,self.sensing_ranges[agent_id])
         else:
             raise Exception('Unknown Agent Type')
-        
+        obs[:,:,1]=np.zeros_like(obs[:,:,1])
+        obs[agent_pos[0],agent_pos[1],1]=1
         self.agents_observation[agent_id]=obs
         
 
@@ -86,23 +95,36 @@ class MRS():
 
         return torch.FloatTensor(self.agents_observation)
 
+    def get_adj_mat(self):
+        #return: N*N
+        # get the adjacency matrix of all agents
         
+        #distance matrix
+        pos=torch.FloatTensor(self.agents_pos)
+        dist_mat=torch.cdist(pos,pos)
+        #adjacency matrix
+        adj_mat=torch.zeros_like(dist_mat)
+        adj_mat[dist_mat<=self.config['env']['comm_range']]=1
+
+        return adj_mat
 
     
     def step(self,grid,model):
         
         obs=self.observe(grid) #N*H*W*C
         obs=obs.permute(0,3,1,2) #N*C*H*W
-        obs=obs.unsqueeze(0) #1*N*C*H*W
+        obs=obs.unsqueeze(0) #1*N*C*H*W->B*N*C*H*W
         
-        adj_mat=torch.eye(len(self.agents_type)).unsqueeze(0).unsqueeze(0) #B*1*N*N
-        SList=[adj_mat]*self.config['network']['Fusion']['K']
+        adj_mat=self.get_adj_mat().unsqueeze(0).unsqueeze(0) #B*E*N*N
+        SList=[adj_mat]
+        for  k in range(self.config['network']['Fusion']['K']-1):
+            adj_mat=adj_mat.matmul(adj_mat)
+            SList.append(adj_mat)
         model.add_graph(SList)
         obs=obs.to(self.config['device'])
         action=model(obs)
         action=action.squeeze(0).detach().cpu().numpy()
         action=np.argmax(action,axis=1)
-        
         
         return action
         

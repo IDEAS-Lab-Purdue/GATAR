@@ -10,4 +10,4 @@ source /home/peng374/.bashrc
 conda activate py37
 module load gcc
 
-python main.py --data config/params.yaml
+python train.py --data config/params.yaml --render

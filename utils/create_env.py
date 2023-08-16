@@ -33,7 +33,7 @@ if __name__ == '__main__':
     
     args = parser()
     params = yaml.load(open(args.config,'r'),Loader=yaml.FullLoader)
-    map_num = 1000
+    map_num = 5000
      
     size_x = params['env']['grid_size']['x']
     size_y = params['env']['grid_size']['y']

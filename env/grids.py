@@ -11,21 +11,29 @@ import torch
 # extended class for grid world
 class gridWorld(baseEnv):
 
-    def __init__(self,params,obstacles):
+    def __init__(self,params,obstacles,verbose=False):
         
         self.params = params
         self.grid = np.zeros((params['grid_size']['x'],params['grid_size']['y'],3))
         self.agents_observation=np.zeros((params['num_agents'],params['grid_size']['x'],params['grid_size']['y'],3))
         self.agents_pos = np.zeros((params['num_agents'],2),dtype=int)
-        self.obstacles = np.array(obstacles)
-        self.grid[self.obstacles[:,0],self.obstacles[:,1],0] = 1
+        if len (obstacles)!=0:
+            self.obstacles = np.array(obstacles)
+            self.grid[self.obstacles[:,0],self.obstacles[:,1],0] = 1
+        else:
+            self.obstacles = None
+        
         self.__assign_targets()
         #self.vis(store=True)
-        print('Environment initialized')
-        print("Targets' positions: ",self.targets.shape)
-        print("Obstacles' positions: ",self.obstacles.shape)
-        print("Agents' positions: ",self.agents_pos.shape)
-        print('------------------------')
+        if verbose:
+            print('Environment initialized')
+            print("Targets' positions: ",self.targets.shape)
+            if self.obstacles is not None:
+                print("Obstacles' positions: ",self.obstacles.shape)
+            else:
+                print("No obstacles")
+            print("Agents' positions: ",self.agents_pos.shape)
+            print('------------------------')
 
     def __assign_targets(self):
         self.targets = []
@@ -71,8 +79,9 @@ class gridWorld(baseEnv):
             self.ax.plot(self.targets[i,0]+0.5,self.targets[i,1]+0.5,'ro',markersize=1)
         
         # indicate the obstacles with black blocks
-        for i in range(self.obstacles.shape[0]):
-            self.ax.add_patch(plt.Rectangle((self.obstacles[i,0],self.obstacles[i,1]),1,1,fill=True,color='k'))
+        if self.obstacles is not None:
+            for i in range(self.obstacles.shape[0]):
+                self.ax.add_patch(plt.Rectangle((self.obstacles[i,0],self.obstacles[i,1]),1,1,fill=True,color='k'))
 
         # indicate the agents with blue dots
         for i in range(self.agents_pos.shape[0]):
@@ -152,9 +161,9 @@ class gridWorld(baseEnv):
         
         return data
 
-    def step(self,agents,model):
+    def step(self,agents,action):
         
-        action=agents.step(self.grid,model)
+        
 
 
         directions = np.array([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]])
@@ -177,14 +186,19 @@ class gridWorld(baseEnv):
             if agents.agents_type[i]=="UAV":
                 is_hit_obstacles[i]=False  
         # make the conflicting agents stay still
-        new_agents_pos[is_hit_obstacles] = self.agents_pos[is_hit_obstacles]
+        if np.sum(is_hit_obstacles)>0:
+            new_agents_pos[is_hit_obstacles] = self.agents_pos[is_hit_obstacles]
         # check whether the agents reach the targets
         is_reach_target = self.grid[new_agents_pos[:, 0], new_agents_pos[:, 1], 2] == 1
-        
+        reward = np.sum(is_reach_target)-0.1
+
         # remove the targets that are reached
         self.grid[new_agents_pos[is_reach_target, 0], new_agents_pos[is_reach_target, 1], 2] = 0
         # update the targets list
         self.targets=np.array(np.where(self.grid[:,:,2]==1)).T
+        done=False
+        if self.targets.shape[0]==0:
+            done=True
         self.agents_pos = new_agents_pos
         agents.agents_pos = new_agents_pos.astype(int)
         # update the grid
@@ -192,7 +206,7 @@ class gridWorld(baseEnv):
         for i in range(len(agents.agents_type)):
             self.grid[self.agents_pos[i,0],self.agents_pos[i,1],1] = 1
         
-
+        return reward,done
             
         
  
@@ -201,9 +215,12 @@ class gridWorld(baseEnv):
         self.grid[:,:,2]=0
         self.__assign_targets()
 
-    def get_local_observation(self,agent_id):
-        
-        map = self.__get_observation(agent_id)
-        return map
+
         
 
+    def copy(self):
+        new_instance = gridWorld(self.params,self.obstacles)
+        new_instance.grid = self.grid.copy()
+        new_instance.agents_pos = self.agents_pos.copy()
+        new_instance.targets = self.targets.copy()
+        return new_instance

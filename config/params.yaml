@@ -1,17 +1,19 @@
-config_name: test
+config_name: obstacle_free_20target_random_reward_shaping_Prob_load_pretrained
 
 env:
-  num_targets: 10
+  num_targets: 20
+  random_start: True
+  num_agents: 2
 
-  num_agents: 5
+  comm_range: 8
 
   grid_size:
-    x: &x 30
-    y: &y 30
+    x: &x 12
+    y: &y 12
 
   sub_groups:
     side_division: 3
-    group_obstacle_matrix: [[0,0,5],[0,5,8],[10,8,15]]
+    group_obstacle_matrix: [[0,0,0],[0,0,0],[0,0,0]]
   
   vis:
     mode: global&local
@@ -19,19 +21,17 @@ env:
 agent:
   UAV1:
     type: UGV
-    num: 3
-    sensing_range: 4
-    max_speed: 1
-  UGV1:
-    type: UAV
     num: 2
     sensing_range: 4
     max_speed: 1
+    
+  
 
 network:
   x: *x
   y: *y
   CNNEncoder:
+    RES: False
     input_channel: 3
     output_channel: 3
     channel: [3,8,3]
@@ -45,14 +45,29 @@ network:
   Fusion:
     model: GAT
     shortcut: True
-    K: 2
+    K: 1
     heads: 3
-    input_feature: [128,16,8]
-    output_feature: [8,8,4]
+    input_feature: [128,8]
+    output_feature: [8,4]
     activation: relu
 
   MLP:
     
-    output_feature: [12,64,32,16,5]
+    output_feature: [12,12,5]
     activation: relu
     
+RL:
+  action_dim: 5
+  episodes: 10000
+  max_steps: 100
+  learning_rate: 0.000001
+  weight_decay: 0.001
+  gamma: 0.99
+  tau: 0.001
+  buffer_size: 5000
+  batch_size: 512
+  epsilon: 0.1
+  epsilon_min: 0.01
+  epsilon_decay: 0.95
+
+

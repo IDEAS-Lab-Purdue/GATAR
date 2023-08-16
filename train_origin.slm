@@ -3,13 +3,11 @@
 
 #SBATCH -N 1 -n 16
 #SBATCH --gpus-per-node=1 
-#SBATCH --output=/home/peng374/deep-multirobot-task/joboutput/train_baseline2hop_commfc.out
+#SBATCH --output=test.6.out
 #SBATCH --time=04:00:00
 
 source /home/peng374/.bashrc
 conda activate py37
 module load gcc
 
-#python main.py configs/coverageTask_20rob_FIX_6FOV_20STEP_10COMM_3layer_2filtertap_GNN2layer_32_128.json --mode train --tgt_feat 20 --rbt_feat 10 --nGraphFilterTaps 4 --num_agents 20 --trained_num_agents 20
-python main.py configs/coverageTask_20rob_FIX_6FOV_20STEP_10COMM_3layer_2filtertap_GNN2layer_32_128.json --mode train --tgt_feat 20 --rbt_feat 10 --nGraphFilterTaps 3 --num_agents 20 --trained_num_agents 20
-
+python -u train.py --data config/params.yaml --render --load_pretrained data/obstacle_free_20target_small_lr_random_reward_shaping_12x12_agent3/best_model.pth

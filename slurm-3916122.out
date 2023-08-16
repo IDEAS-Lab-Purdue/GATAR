@@ -1,6 +1,0 @@
-/var/spool/slurm/job3916122/slurm_script: line 11: module: command not found
-{'config_name': 'test', 'env': {'num_targets': 10, 'num_agents': 5, 'grid_size': {'x': 30, 'y': 30}, 'sub_groups': {'side_division': 3, 'group_obstacle_matrix': [[0, 0, 5], [0, 5, 8], [10, 8, 15]]}, 'vis': {'mode': 'global&local'}}, 'agent': {'UAV1': {'type': 'UGV', 'num': 3, 'sensing_range': 4, 'max_speed': 1}, 'UGV1': {'type': 'UAV', 'num': 2, 'sensing_range': 4, 'max_speed': 1}}, 'network': {'x': 30, 'y': 30, 'CNNEncoder': {'input_channel': 3, 'output_channel': 3, 'hidden_state': [4, 16, 4], 'kernel_size': [3, 3, 3], 'activation': 'relu'}, 'Flatten': {'input_feature': 3, 'output_feature': 128, 'activation': 'relu'}, 'Fusion': {'model': 'GAT', 'shortcut': True, 'K': 3, 'heads': 3, 'input_feature': 128, 'output_feature': 128, 'hidden_state': [64, 32, 16], 'activation': 'relu'}, 'MLP': {'input_feature': 128, 'output_feature': 5, 'hidden_state': [64, 32, 16], 'activation': 'relu'}}}
-Traceback (most recent call last):
-  File "main.py", line 36, in <module>
-    MRS = team.MRS(configs)
-NameError: name 'team' is not defined

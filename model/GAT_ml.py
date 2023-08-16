@@ -20,6 +20,7 @@ class GNOLayers(nn.Module):
         self.bias=True
         self.SList=None
 
+        
 
         downwardPass =[]
         
@@ -50,9 +51,9 @@ class GNOLayers(nn.Module):
 
     def addGSO(self, Slist):
         for l in range(self.K):
-            self.downwardPass[l].addGSO(Slist[l])  # add GSO for GraphFilter
-            self.upwardPass[l].addGSO(Slist[-1-l])  # add GSO for GraphFilter
-            self.shortcut[l].addGSO(Slist[l])  # add GSO for GraphFilter
+            self.downwardPass[l].addGSO(Slist[:,l:l+1,:])  # add GSO for GraphFilter
+            self.upwardPass[l].addGSO(Slist[:,self.K-l-1:self.K-l,:])  # add GSO for GraphFilter
+            self.shortcut[l].addGSO(Slist[:,l:l+1,:])  # add GSO for GraphFilter
         
     
     def forward(self,extractFeatureMap):
@@ -113,26 +114,34 @@ class GATPlanner(nn.Module):
 
     def forward(self, x):
         # x: (B, N, C, H, W)
+        # output: (B, N, Action)
+        # B: batch size
+        # N: number of agents
+        # Action: number of actions
+
         # CNN Encoder
+        
         start_time=time.time()
         B=x.shape[0]
         N=x.shape[1]
         x=x.reshape(B*N,x.shape[2],x.shape[3],x.shape[4])
-        x=self.encoder_layer(x)
+        if self.config['CNNEncoder']['RES']:
+            x=self.encoder_layer(x)+x
+        else:
+            x=self.encoder_layer(x)
         # Flatten
         x=self.flatten(x)
         x=x.reshape(B,-1,N)
         encoder_time=time.time()
         # GAT
+        
         x=self.gat(x)
         gat_time=time.time()
         # MLP
         x=x.reshape(B*N,-1)
         x=self.decoder_layer(x)
-        x=x.reshape(B,N,-1)
+        output=x.reshape(B,N,-1)
         
-
-        # B,N,Action
-        return x
+        return output
     
     

@@ -9,9 +9,12 @@ import os
 from agent.team import *
 import time
 import threading
+import queue
+import multiprocessing as mp
 def parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data',type=str,default='configs/params.yaml')
+    parser.add_argument('--render',action='store_true',default=False)
     return parser.parse_args()
 
 args = parser()
@@ -51,10 +54,14 @@ model=model.to(device)
 print("model created")
 print(model)
 start_time = time.time()
+frames = []
 for round in tqdm(range(1)):
     for step in tqdm(range(400)):
 
         instance.step(team,model)
+        if args.render:
+            frame = instance.vis(team.agents_observation)
+            frames.append(frame)
 
     instance.reset()
 finish_time = time.time()
@@ -63,3 +70,9 @@ print("average time per round: ",(finish_time-start_time)/1)
 
 
 
+
+
+if args.render:
+    print("start rendering")
+    imageio.mimsave(f'{path}render.mp4', frames, duration=0.1)
+    print("rendering done")
