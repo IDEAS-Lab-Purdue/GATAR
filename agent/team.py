@@ -69,7 +69,7 @@ class MRS():
         
         mask=tcod.map.compute_fov(trans,[agent_pos[0],agent_pos[1]],radius=sensing_range)
         repl_mask=np.repeat(mask[:,:,np.newaxis],3,axis=2)
-        output= np.full(grid.shape,999)
+        output= np.full(grid.shape,-999)
         output[repl_mask]=grid[repl_mask]
         return output
 
@@ -80,7 +80,7 @@ class MRS():
         trans=np.where(grid[:,:,0]==1,False,True)
         mask=tcod.map.compute_fov(trans,[agent_pos[0],agent_pos[1]],radius=sensing_range)
         repl_mask=np.repeat(mask[:,:,np.newaxis],3,axis=2)
-        output= np.full(grid.shape,999)
+        output= np.full(grid.shape,-999)
         output[repl_mask]=grid[repl_mask]
         return output
 

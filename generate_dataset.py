@@ -1,0 +1,152 @@
+from env.grids import gridWorld
+import yaml
+import numpy as np
+from tqdm import tqdm
+import imageio
+import json
+import argparse
+import os
+from agent.team import *
+import time
+import threading
+import queue
+import multiprocessing as mp
+import tensorboard
+import logging
+from utils.setupEXP import *
+
+def parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config',type=str,default='config/test.yaml')
+    parser.add_argument('--render',action='store_true',default=False)
+    parser.add_argument('--load_pretrained',type=str,default=None)
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parser()
+
+    configs = yaml.load(open(args.config,'r'),Loader=yaml.FullLoader)
+    print("configs loaded from ",args.config)
+    configs['network']['load_pretrained']=args.load_pretrained
+    
+    name=configs['config_name']
+    size_x=configs['env']['grid_size']['x']
+    size_y=configs['env']['grid_size']['y']
+    agent_num = configs['env']['num_agents']    
+    dir =f'dataset/{name}_{size_x}x{size_y}_agent{agent_num}/'
+    
+    #check if experiment name exists
+    if not os.path.exists(dir+'map_dict.json') or not os.path.exists(dir+'params.yaml'):
+        print(f'creating new experiment {name} with {agent_num} agents')
+        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 2000')
+    else:
+        print(f'loading experiment {name} with {agent_num} agents')
+    # wait for the environment to be created
+    while not os.path.exists(dir+'map_dict.json'):
+        pass
+    # load the map
+    map_dict = json.load(open(dir+'map_dict.json','r'))
+    agent_num = configs['env']['num_agents']
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    log,tb_writer = start(dir)
+    log.info(f'generating datasets for {name} with {agent_num} agents')
+    log.info(f'using device {device}')
+    configs.update({'device':device})
+    dataset_dict={}
+    for key in tqdm(map_dict.keys()):
+        single_map = map_dict[key]
+        log.info(f'generating data for map {key}')
+        env = gridWorld(configs['env'],single_map)
+        team = MRS(configs)
+        cost = np.ones([env.grid.shape[0],env.grid.shape[1]]).astype(int)
+        cost[env.grid[:,:,0]==1]=0
+        tcod_graph = tcod.path.SimpleGraph(cost=cost, cardinal=1, diagonal = 0)
+        env.sync(team)
+        env.step(team,np.zeros([team.agent_num]).astype(int))
+        signal = True
+        allocated_tasks = np.zeros([team.agent_num,2])
+        found_path = [None]*team.agent_num
+        frames = []
+        data_points = []
+        while env.targets.shape[0]!=0:
+
+            if signal: # allocate tasks
+                targets = env.targets
+                agents_pos = team.agents_pos
+                dist_array = torch.zeros([agents_pos.shape[0],targets.shape[0]])
+                
+                for i in range(agents_pos.shape[0]):
+                    agent_pos = agents_pos[i,:]
+                    pf = tcod.path.Pathfinder(tcod_graph)
+                    pf.add_root((agent_pos[0],agent_pos[1]))
+                    for j in range(targets.shape[0]):
+                        target = targets[j,:]
+                        path = pf.path_to((target[0],target[1]))
+                        dist_array[i,j] = len(path)
+                
+                processed_agent=[]
+                for _ in range(agents_pos.shape[0]):
+
+                    linear_index = torch.argmin(dist_array)
+                    row, col = linear_index // dist_array.shape[1], linear_index % dist_array.shape[1]
+                    allocated_tasks[row,:] = targets[col,:]
+                    # delete this column and row
+                    
+                    
+                    dist_array[:,col] = torch.tensor([999]*dist_array.shape[0])
+                    processed_agent.append(row)
+                    dist_array[processed_agent,:] = torch.tensor([float('inf')]*dist_array.shape[1])
+                    
+                    
+                    pf = tcod.path.Pathfinder(tcod_graph)
+                    pf.add_root((agents_pos[row,0],agents_pos[row,1]))
+                    found_path[row] = pf.path_to((targets[col,0],targets[col,1]))
+
+                signal = False
+            
+            actions=[]
+            
+
+            for i in range(team.agent_num):
+                #print("found_path:",found_path)
+                next_pos = found_path[i][1]
+                action = next_pos - team.agents_pos[i,:]
+                # delete the first element in the path
+                if action[0]==0 and action[1]==0:
+                    action = 0
+                elif action[0]==0 and action[1]==1:
+                    action = 1
+                elif action[0]==0 and action[1]==-1:
+                    action = 2
+                elif action[0]==1 and action[1]==0:
+                    action = 3
+                elif action[0]==-1 and action[1]==0:
+                    action = 4
+                else:
+                    raise Exception('Unknown Action')
+                actions.append(action)
+                found_path[i]=np.delete(found_path[i],0,axis=0)
+                if found_path[i].shape[0]==1:
+                    signal = True
+            
+            actions = np.array(actions)
+            obs=team.observe(env.grid)
+            agent_pos = team.agents_pos
+
+            
+            
+            # store datapoint
+            data_point={'obs':obs,
+                        'agent_pos':agent_pos,
+                        'grid':env.grid.copy(),
+                        'actions':actions}
+            data_points.append(data_point)
+            # step the environment
+            reward,done = env.step(team,actions)
+        # save the datapoints 
+        #print("cost",len(data_points),"for map",key)
+        dataset_dict.update({key:data_points})
+    # save the dataset_dict to json file
+    torch.save(dataset_dict,dir+'dataset_dict.pt')

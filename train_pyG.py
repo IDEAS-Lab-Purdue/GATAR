@@ -1,10 +1,10 @@
 import torch
-from dataset.dataset import myDataset
+from dataset.datasetPyG import myDataset
 import argparse
 import yaml
 import os
 from torch.utils.data import DataLoader
-from model.GAT_ml import GATPlanner
+from model.GAT import CustomGAT
 from utils.setupEXP import start as st
 import time
 
@@ -13,24 +13,17 @@ def parser():
     parser.add_argument('--data_root',type=str,default=None)
     parser.add_argument('--con_train',action='store_true',default=False)
     return parser.parse_args()
+
 def train_epoch():
     model.train()
     epoch_loss=0
     for i, data in enumerate(train_loader):
-        obs,adj,grid,action = data
-        adj=adj.to(device)
+        obs,pos,_,action = data
+        pos=pos.to(device).float()
         obs=obs.to(device)
         action=action.to(device)
-        # generate adjacency matrix from obs
-        adj=adj.squeeze(1)
-        SList=[adj]
-        for l in range(config['network']['Fusion']['K']-1):
-            adj = torch.bmm(adj,adj)
-            SList.append(adj)
-        SList=torch.stack(SList,dim=1)
-        model.add_graph(SList)
-        obs=obs.permute(0,1,4,2,3)
-        action_pred = model(obs).view(action.shape[0],5,-1)
+        
+        action_pred = model(obs,pos).view(action.shape[0],5,-1)
         loss = criterion(action_pred,action)
         optimizer.zero_grad()
         loss.backward()
@@ -45,21 +38,12 @@ def val_epoch():
         acc_num=0
         total_num=0
         for i, data in enumerate(val_loader):
-            obs,adj,grid,action = data
-            adj=adj.to(device)
+            obs,pos,_,action = data
+            pos=pos.to(device).float()
             obs=obs.to(device)
             action=action.to(device)
-            # generate adjacency matrix from obs
-            adj=adj.squeeze(1)
-            SList=[adj]
-            for l in range(config['network']['Fusion']['K']-1):
-                adj = torch.bmm(adj,adj)
-                SList.append(adj)
-            SList=torch.stack(SList,dim=1)
-            model.add_graph(SList)
-            obs=obs.permute(0,1,4,2,3)
-            action_pred = model(obs).reshape(action.shape[0],5,-1)
             
+            action_pred = model(obs,pos).view(action.shape[0],5,-1)
             loss = criterion(action_pred,action)
             epoch_loss+=loss.item()
             acc_num+=(action_pred.argmax(dim=1)==action).sum().item()
@@ -100,28 +84,25 @@ if __name__ == "__main__":
         raise ValueError("experiment name already exists")
     # copy the config file to the experiment folder
     os.system(f'cp {config_path} {exp_dir}')
-    log,tb_writer = st(exp_dir)
-
+    
     train_dataset = myDataset(config,phase="train")
     val_dataset = myDataset(config,phase="val")
     batch_size = config['batch_size']
     train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
+    print(f'train dataset size {len(train_dataset)}')
     val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False)
+    print(f'val dataset size {len(val_dataset)}')
 
-    model = GATPlanner(config)
-    if "initialization" in config.keys() and not args.con_train:
-        model.init_params()
+    
+    model = CustomGAT(config)
+    log,tb_writer = st(exp_dir)
     log.info('model:')
     log.info(model)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'],weight_decay=config['weight_decay'])
-    if "lr_reset" in config.keys():
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
-    else:
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
-    
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
     criterion = torch.nn.CrossEntropyLoss()
     train()
     

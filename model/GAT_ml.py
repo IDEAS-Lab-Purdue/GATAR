@@ -91,9 +91,19 @@ class GATPlanner(nn.Module):
             kernel_size=self.config['CNNEncoder']['kernel_size'][l]
             padding=kernel_size//2
             self.encoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=padding))
-            self.encoder_layer.append(nn.ReLU())
+            if self.config['CNNEncoder']['activation'] =='relu':
+                activation=nn.ReLU()
+            elif self.config['CNNEncoder']['activation'] =='leakyrelu':
+                activation=nn.LeakyReLU()
+            elif self.config['CNNEncoder']['activation'] =='tanh':
+                activation=nn.Tanh()
+            elif self.config['CNNEncoder']['activation'] =='sigmoid':
+                activation=nn.Sigmoid()
+            else:
+                raise Exception('Unknown Activation Function')
+            self.encoder_layer.append(activation)
         self.encoder_layer=nn.Sequential(*self.encoder_layer)
-        self.flatten=nn.Sequential(nn.Flatten(),nn.Linear(self.H*self.W*self.config['CNNEncoder']['channel'][-1],self.config['Flatten']['output_feature']),nn.ReLU())
+        self.flatten=nn.Sequential(nn.Flatten(start_dim=2),nn.Linear(self.H*self.W*self.config['CNNEncoder']['channel'][-1],self.config['Flatten']['output_feature']),nn.ReLU())
         # create GAT
         self.gat=GNOLayers(self.config['Fusion'])
 
@@ -106,8 +116,20 @@ class GATPlanner(nn.Module):
             self.decoder_layer.append(nn.Linear(in_dim,out_dim))
 
             self.decoder_layer.append(nn.ReLU())
-        self.decoder_layer[-1]=nn.Softmax()
+        self.decoder_layer[-1]=nn.Sigmoid()
         self.decoder_layer=nn.Sequential(*self.decoder_layer)
+    def init_params(self):
+
+        #init using kaiming normal
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias.data)
+            elif isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias.data)
 
     def add_graph(self, Slist):
         self.gat.addGSO(Slist)
@@ -129,9 +151,10 @@ class GATPlanner(nn.Module):
             x=self.encoder_layer(x)+x
         else:
             x=self.encoder_layer(x)
+        x=x.reshape(B,N,x.shape[1],x.shape[2],x.shape[3])
         # Flatten
         x=self.flatten(x)
-        x=x.reshape(B,-1,N)
+        x=x.reshape(B,N,-1).permute(0,2,1)
         encoder_time=time.time()
         # GAT
         

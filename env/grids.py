@@ -11,19 +11,21 @@ import torch
 # extended class for grid world
 class gridWorld(baseEnv):
 
-    def __init__(self,params,obstacles,verbose=False):
+    def __init__(self,params,map_dict,verbose=False):
         
         self.params = params
         self.grid = np.zeros((params['grid_size']['x'],params['grid_size']['y'],3))
         self.agents_observation=np.zeros((params['num_agents'],params['grid_size']['x'],params['grid_size']['y'],3))
         self.agents_pos = np.zeros((params['num_agents'],2),dtype=int)
+        obstacles = map_dict['obstacles'] 
         if len (obstacles)!=0:
             self.obstacles = np.array(obstacles)
             self.grid[self.obstacles[:,0],self.obstacles[:,1],0] = 1
         else:
             self.obstacles = None
-        
-        self.__assign_targets()
+        targets=map_dict['targets']
+        self.targets = np.array(targets)
+        self.grid[self.targets[:,0],self.targets[:,1],2] = 1
         #self.vis(store=True)
         if verbose:
             print('Environment initialized')
@@ -35,18 +37,12 @@ class gridWorld(baseEnv):
             print("Agents' positions: ",self.agents_pos.shape)
             print('------------------------')
 
-    def __assign_targets(self):
-        self.targets = []
-        for i in range(self.params['num_targets']):
-            # randomly generate a target position that is not occupied by obstacles
-            while True:
-                position = [random.randint(0,self.params['grid_size']['x']-1),random.randint(0,self.params['grid_size']['y']-1)]
-                if self.grid[position[0],position[1],0] == 0:
-                    break
-            self.targets.append(position)
-            self.grid[self.targets[-1][0],self.targets[-1][1],2] = 1
-        self.targets = np.array(self.targets)
-        
+    def sync(self,agents):
+        self.agents_pos = agents.agents_pos
+        self.agents_observation = agents.agents_observation
+        self.grid[:,:,1]=0
+        for i in range(len(agents.agents_type)):
+            self.grid[self.agents_pos[i,0],self.agents_pos[i,1],1] = 1
 
     def vis(self,obs,draw_arrows=False,store=False,filename=None):
         #visualize the grid
@@ -163,12 +159,11 @@ class gridWorld(baseEnv):
 
     def step(self,agents,action):
         
-        
-
-
+         
         directions = np.array([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]])
 
         # update agents' position
+        
         new_agents_pos = agents.agents_pos+ directions[action.ravel()]
 
         # check whether the agents are out of bound
@@ -209,15 +204,6 @@ class gridWorld(baseEnv):
         return reward,done
             
         
- 
-    def reset(self):
-        # restore agents and targets keep obstacles
-        self.grid[:,:,2]=0
-        self.__assign_targets()
-
-
-        
-
     def copy(self):
         new_instance = gridWorld(self.params,self.obstacles)
         new_instance.grid = self.grid.copy()
