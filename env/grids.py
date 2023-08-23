@@ -81,6 +81,7 @@ class gridWorld(baseEnv):
 
         # indicate the agents with blue dots
         for i in range(self.agents_pos.shape[0]):
+
             self.ax.plot(self.agents_pos[i,0]+0.5,self.agents_pos[i,1]+0.5,'bo',markersize=1)
 
         
@@ -107,7 +108,7 @@ class gridWorld(baseEnv):
             for i in range(len(local_targets[0])):
                 self.ax2.plot(local_targets[0][i]+0.5,local_targets[1][i]+0.5,'ro',markersize=1)
             # add a dim yellow background on the observed area
-            observed_area = np.where(observation_test[:,:,0]>1)
+            observed_area = np.where(observation_test[:,:,0]<0)
             for i in range(len(observed_area[0])):
                 self.ax2.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
             # draw the ego agent
@@ -133,7 +134,7 @@ class gridWorld(baseEnv):
             for i in range(len(local_targets[0])):
                 self.ax3.plot(local_targets[0][i]+0.5,local_targets[1][i]+0.5,'ro',markersize=1)
             # add a dim yellow background on the observed area
-            observed_area = np.where(observation_test[:,:,0]>1)
+            observed_area = np.where(observation_test[:,:,0]<0)
             for i in range(len(observed_area[0])):
                 self.ax3.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
             # draw the ego agent
@@ -160,7 +161,7 @@ class gridWorld(baseEnv):
     def step(self,agents,action):
         
          
-        directions = np.array([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]])
+        directions = np.array([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0],[1,1],[1,-1],[-1,1],[-1,-1]])
 
         # update agents' position
         
@@ -176,6 +177,8 @@ class gridWorld(baseEnv):
         new_agents_pos = new_agents_pos.astype(int)
         # check whether the agents hit obstacles
         is_hit_obstacles = self.grid[new_agents_pos[:, 0], new_agents_pos[:, 1], 0] == 1
+        
+        
         
         for i in range(len(agents.agents_type)):
             if agents.agents_type[i]=="UAV":

@@ -1,61 +1,65 @@
-config_name: 20targetPyG
+config_name: 30target_w_prior_diagnoal_large
 
-weight_decay: 0.00001
+weight_decay: 0.000001
 lr: 0.0003
-batch_size: 64
+batch_size: 256
 
 initialization:
   type: kaiming
-
-
 env:
-  num_targets: 20
+  diag: True
+  num_targets: 30
   random_start: True
   num_agents: 4
   comm_range: 8
   grid_size:
-    x: &x 18
-    y: &y 18
+    x: &x 15
+    y: &y 15
   sub_groups:
     side_division: 3
     group_obstacle_matrix: [[0,0,0],[0,0,0],[0,0,0]]
   vis:
     mode: global&local
-
 agent:
   UAV1:
     type: UAV
     num: 4
     sensing_range: 4
     max_speed: 1
-     
 network:
   x: *x
   y: *y
+  NormS: True
   CNNEncoder:
-    RES: True
+    RES: False
     input_channel: 3
     output_channel: 3
-    channel: [3,16,64,16,3]
-    kernel_size: [3,3,3,3]
-    activation: sigmoid
+    channel: []
+    kernel_size: []
+    activation: relu
 
   Flatten:
-    output_feature: 1024
     activation: relu
   
   Fusion:
     model: GAT
     shortcut: True
+    attention_mode: KeyQuery
     K: 2
     heads: 3
-    input_feature: [1024,32,32]
-    output_feature: [32,16,16]
+    input_feature: [675,64,4]
+    output_feature: [4,64,225]
     activation: relu
 
+  CNNDecoder:
+    
+    channel: [6,8,1]
+    kernel_size: [3,3]
+    activation: relu
+  
   MLP:
     
-    output_feature: [48,64,5]
+    output_feature: [225,32,5]
     activation: relu
     
 

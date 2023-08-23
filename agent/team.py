@@ -70,7 +70,7 @@ class MRS():
         mask=tcod.map.compute_fov(trans,[agent_pos[0],agent_pos[1]],radius=sensing_range)
         repl_mask=np.repeat(mask[:,:,np.newaxis],3,axis=2)
         output= np.full(grid.shape,-999)
-        output[repl_mask]=grid[repl_mask]
+        output[repl_mask]=temp_grid[repl_mask]
         return output
 
     def __UGVObserve(self,grid,agent_pos,sensing_range):
