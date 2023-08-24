@@ -20,7 +20,7 @@ def parser():
     return parser.parse_args()
 def train_epoch():
     model.train()
-    epoch_loss=0
+    epoch_loss=[]
     for i, data in enumerate(train_loader):
         obs,adj,grid,action = data
         adj=adj.to(device)
@@ -72,16 +72,19 @@ def train_epoch():
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        epoch_loss+=loss.item()
+        epoch_loss.append(loss.item())
         if "loss" in config.keys():
             acc=0
         else:
             acc=(action_pred.argmax(dim=1)==action).sum().item()/action.shape[0]
+    
+    epoch_loss=sum(epoch_loss)/len(epoch_loss)
+    log.info(f'train loss {epoch_loss}')
 
-    return epoch_loss*batch_size,acc
+    return epoch_loss,acc
 def val_epoch():
     model.eval()
-    epoch_loss=0
+    epoch_loss=[]
     with torch.no_grad():
         acc_num=0
         total_num=0
@@ -133,10 +136,10 @@ def val_epoch():
                 action_pred = model(obs,args.test).reshape(action.shape[0],config['network']['MLP']['output_feature'][-1],-1)
             
             loss = criterion(action_pred,action)
-            log.info("action_pred_prob: {}".format(action_pred[0]))
-            log.info("action_pred: {}".format(action_pred[0].argmax(dim=0)))
-            log.info("action_gt: {}".format(action[0]))
-            epoch_loss+=loss.item()
+            # log.info("action_pred_prob: {}".format(action_pred[0]))
+            # log.info("action_pred: {}".format(action_pred[0].argmax(dim=0)))
+            # log.info("action_gt: {}".format(action[0]))
+            epoch_loss.append(loss.item())
             if "loss" in config.keys():
                 if config['loss']=="MSE":
                     acc=0
@@ -149,7 +152,8 @@ def val_epoch():
             if args.test:
                 break
         acc=acc_num/total_num
-    return epoch_loss*batch_size,acc
+        epoch_loss=sum(epoch_loss)/len(epoch_loss)
+    return epoch_loss,acc
 
 def train():
     max_epoch = 5000
@@ -224,8 +228,8 @@ if __name__ == "__main__":
     log.info(f'train dataset size {len(train_dataset)}')
     log.info(f'val dataset size {len(val_dataset)}')
     batch_size = config['batch_size']
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=8,prefetch_factor=8)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=8,prefetch_factor=8)
     # visulize the data
     for i, data in enumerate(train_loader):
         obs,adj,grid,action = data

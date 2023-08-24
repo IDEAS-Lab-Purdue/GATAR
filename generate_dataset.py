@@ -15,6 +15,7 @@ import tensorboard
 import logging
 from utils.setupEXP import *
 from math import sqrt
+import pickle
 
 def parser():
     parser = argparse.ArgumentParser()
@@ -40,12 +41,20 @@ if __name__ == "__main__":
     #check if experiment name exists
     if not os.path.exists(dir+'map_dict.json') or not os.path.exists(dir+'params.yaml'):
         print(f'creating new experiment {name} with {agent_num} agents')
-        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 200')
+        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 20')
     else:
         print(f'loading experiment {name} with {agent_num} agents')
     # wait for the environment to be created
     while not os.path.exists(dir+'map_dict.json'):
         pass
+
+    if os.path.exists(dir+'dataset_dict.pkl'):
+        print("dataset already exists")
+        exit()
+    if os.path.exists(dir+'prioritized_dataset_dict.pkl'):
+        print("prioritized dataset already exists")
+        exit()
+
     # load the map
     map_dict = json.load(open(dir+'map_dict.json','r'))
     agent_num = configs['env']['num_agents']
@@ -57,6 +66,10 @@ if __name__ == "__main__":
     configs.update({'device':device})
     dataset_dict={}
     prioritized_dataset_dict={}
+    #save the dataset_dict to json file
+    torch.save(dataset_dict,dir+'dataset_dict.pt')
+    torch.save(prioritized_dataset_dict,dir+'prioritized_dataset_dict.pt')
+    
     for key in tqdm(map_dict.keys()):
         
         for k in range(100):
@@ -203,13 +216,20 @@ if __name__ == "__main__":
             token=key+str(k)+str(time.time())
             token=hash(token)
             
-            dataset_dict.update({token:data_points})
+            # dump the data points to file
+            with open(dir+'dataset_dict.pkl', 'ab') as f:
+                pickle.dump(data_points, f)
 
-            prioritized_dataset_dict.update({token: prioritized_data_points})
+            #dataset_dict.update({token:data_points})
+
+            # dump the prioritized data points to file
+            with open(dir+'prioritized_dataset_dict.pkl', 'ab') as f:
+                pickle.dump(prioritized_data_points, f)
+            #prioritized_dataset_dict.update({token: prioritized_data_points})
             if args.render and key=='0' and k==0:
                 imageio.mimsave(dir+'map0.gif', frames, 'GIF', duration=1)
 
     # save the dataset_dict to json file
-    torch.save(dataset_dict,dir+'dataset_dict.pt')
-    torch.save(prioritized_dataset_dict,dir+'prioritized_dataset_dict.pt')
+    # torch.save(dataset_dict,dir+'dataset_dict.pt')
+    # torch.save(prioritized_dataset_dict,dir+'prioritized_dataset_dict.pt')
     log.info(f'dataset saved to {dir}')

@@ -1,17 +1,20 @@
-config_name: 20target_w_prior_20K
+config_name: 20target_w_prior_2K
 
-weight_decay: 0.000001
-lr: 0.0003
-batch_size: 256
+weight_decay: 0.00001
+lr: 0.00001
+batch_size: 512
 
+loss: weighted
+prior: False
+preprocess: True
 initialization:
   type: kaiming
+
 env:
-  diag: False
   num_targets: 20
   random_start: True
   num_agents: 3
-  comm_range: 8
+  comm_range: 6
   grid_size:
     x: &x 15
     y: &y 15
@@ -20,16 +23,18 @@ env:
     group_obstacle_matrix: [[0,0,0],[0,0,0],[0,0,0]]
   vis:
     mode: global&local
+
 agent:
   UAV1:
     type: UAV
     num: 3
     sensing_range: 4
     max_speed: 1
+     
 network:
   x: *x
   y: *y
-  NormS: True
+  
   CNNEncoder:
     RES: False
     input_channel: 3
@@ -37,6 +42,8 @@ network:
     channel: []
     kernel_size: []
     activation: relu
+    dropout: 0.05
+    batch_norm: True
 
   Flatten:
     activation: relu
@@ -45,10 +52,10 @@ network:
     model: GAT
     shortcut: True
     attention_mode: KeyQuery
-    K: 2
+    K: 1
     heads: 3
-    input_feature: [675,64,4]
-    output_feature: [4,64,225]
+    input_feature: [675,16]
+    output_feature: [16,225]
     activation: relu
 
   CNNDecoder:
@@ -56,10 +63,21 @@ network:
     channel: [6,8,1]
     kernel_size: [3,3]
     activation: relu
+    dropout: 0.05
+    batch_norm: True
   
   MLP:
     
-    output_feature: [225,32,5]
+    output_feature: [225,64,5]
     activation: relu
+    dropout: 0.05
+    batch_norm: True
+
+  ByPassMLP:
+
+    output_feature: [225,128,1]
+    activation: relu
+    dropout: 0.05
+    batch_norm: True
     
 
