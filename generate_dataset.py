@@ -40,7 +40,7 @@ if __name__ == "__main__":
     #check if experiment name exists
     if not os.path.exists(dir+'map_dict.json') or not os.path.exists(dir+'params.yaml'):
         print(f'creating new experiment {name} with {agent_num} agents')
-        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 2000')
+        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 200')
     else:
         print(f'loading experiment {name} with {agent_num} agents')
     # wait for the environment to be created
@@ -199,10 +199,12 @@ if __name__ == "__main__":
                 env.step(team,actions)
             # save the datapoints 
             #print("cost",len(data_points),"for map",key)
-            token=key+str(i)
+            
+            token=key+str(k)+str(time.time())
             token=hash(token)
             
             dataset_dict.update({token:data_points})
+
             prioritized_dataset_dict.update({token: prioritized_data_points})
             if args.render and key=='0' and k==0:
                 imageio.mimsave(dir+'map0.gif', frames, 'GIF', duration=1)

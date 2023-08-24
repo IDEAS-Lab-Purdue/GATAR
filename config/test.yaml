@@ -1,4 +1,4 @@
-config_name: 20target_w_prior_200K
+config_name: 20target_w_prior_20K
 
 weight_decay: 0.000001
 lr: 0.0003
