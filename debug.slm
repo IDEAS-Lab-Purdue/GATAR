@@ -2,12 +2,12 @@
 
 
 #SBATCH -N 1 -n 16
-#SBATCH --gpus-per-node=1 
-#SBATCH -A debug
-#SBATCH --time=30:00
+#SBATCH --gpus-per-node=1
+#SBATCH --time=4:00:00
 
 source /home/peng374/.bashrc
 conda activate py37
 module load gcc
 
-python train.py --data config/params.yaml --render
+# python test.py --exp exp/20target_w_o_prior_w_o_CNNencoder_batchnorm_dropout_0.05_agent_4/08-23-15-36-07 --data dataset/20target_w_prior_15x15_agent4
+python generate_dataset.py --render

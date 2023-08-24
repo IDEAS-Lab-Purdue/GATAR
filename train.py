@@ -125,7 +125,7 @@ def val_epoch():
                     action = DIRECTIONS[action]
                 elif config['loss']=="weighted":
                     action_pred = model(obs,args.test).reshape(action.shape[0],5,-1)
-
+                    
                     
                 else:
                     raise NotImplementedError
@@ -133,6 +133,9 @@ def val_epoch():
                 action_pred = model(obs,args.test).reshape(action.shape[0],config['network']['MLP']['output_feature'][-1],-1)
             
             loss = criterion(action_pred,action)
+            log.info("action_pred_prob: {}".format(action_pred[0]))
+            log.info("action_pred: {}".format(action_pred[0].argmax(dim=0)))
+            log.info("action_gt: {}".format(action[0]))
             epoch_loss+=loss.item()
             if "loss" in config.keys():
                 if config['loss']=="MSE":
@@ -175,11 +178,12 @@ def weighted_loss(output,target):
 
     weight_mat=torch.tensor(
         [
-        [0  ,0.1,0.1,0.1,0.1],
-        [0.1,0  ,1 ,0.2,0.2],  
-        [0.1,1 ,0  ,0.2,0.2],
-        [0.1,0.2,0.2,0  ,1 ],
-        [0.1,0.2,0.2,1 ,0   ]
+        #0 stay 1 right 2 left 3 up 4 down
+        [1,1,5,1,1],
+        [1,1,1,1,1 ],  
+        [1,5,1,1,1 ],
+        [1,1,1,1,5 ],
+        [1,1,1,5,1 ]
         ]
         )
     weight_mat=weight_mat.to(device)
@@ -217,6 +221,8 @@ if __name__ == "__main__":
 
     train_dataset = myDataset(config,phase="train")
     val_dataset = myDataset(config,phase="val")
+    log.info(f'train dataset size {len(train_dataset)}')
+    log.info(f'val dataset size {len(val_dataset)}')
     batch_size = config['batch_size']
     train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False)
@@ -242,7 +248,7 @@ if __name__ == "__main__":
             for i in range(len(local_obstacles[0])):
                 ax.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
             # draw observed targets map
-            plt.imshow(observation_test[2,:,:],cmap='Reds',alpha=0.5)
+            plt.imshow(observation_test[2,-1:,:],cmap='Reds',alpha=0.5)
             # add a dim yellow background on the observed area
             observed_area = np.where(observation_test[0,:,:]<0)
             for i in range(len(observed_area[0])):

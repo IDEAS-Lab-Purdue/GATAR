@@ -12,8 +12,9 @@ module load gcc
 
 #python train.py --data_root dataset/20target_big_15x15_agent3
 #python train.py --data_root dataset/20target_small_15x15_agent3
-#python train.py --data_root dataset/30target_w_prior_diagnoal_15x15_agent4
+#python train.py --data_root dataset/30target_w_prior_diagnoal_large_15x15_agent4
 # python train.py --data_root dataset/20target_w_prior_large_15x15_agent4
-python train.py --data_root dataset/20target_w_prior_15x15_agent4
+#python train.py --data_root dataset/20target_w_prior_15x15_agent4
+python train.py --data_root dataset/20target_w_prior_large_15x15_agent3
 #python train.py --data_root dataset/20target_w_prior_het_15x15_agent3
 #python train_pyG.py --data_root dataset/20targetPyG_18x18_agent4

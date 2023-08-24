@@ -1,4 +1,4 @@
-config_name: 30target_w_prior_diagnoal_large
+config_name: 20target_w_prior_200K
 
 weight_decay: 0.000001
 lr: 0.0003
@@ -7,10 +7,10 @@ batch_size: 256
 initialization:
   type: kaiming
 env:
-  diag: True
-  num_targets: 30
+  diag: False
+  num_targets: 20
   random_start: True
-  num_agents: 4
+  num_agents: 3
   comm_range: 8
   grid_size:
     x: &x 15
@@ -23,7 +23,7 @@ env:
 agent:
   UAV1:
     type: UAV
-    num: 4
+    num: 3
     sensing_range: 4
     max_speed: 1
 network:

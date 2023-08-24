@@ -119,7 +119,9 @@ class GATPlanner(nn.Module):
             outchannel=self.config['CNNDecoder']['channel'][l+1]
             kernel_size=self.config['CNNDecoder']['kernel_size'][l]
             padding=kernel_size//2
-            self.decoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=padding))
+            #padding value is -inf
+            self.decoder_layer.append(nn.ConstantPad2d(padding,-999))
+            self.decoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=0))
             if 'batch_norm' in self.config['CNNDecoder'].keys():
                 if self.config['CNNDecoder']['batch_norm']:
                     self.decoder_layer.append(nn.BatchNorm2d(outchannel))
@@ -207,21 +209,7 @@ class GATPlanner(nn.Module):
             enc_out=self.encoder_layer(x)+x
         else:
             enc_out=self.encoder_layer(x)
-        if test:
-            # visualize the feature map
-            import matplotlib.pyplot as plt
-            fig=plt.figure()
-            plt.imshow(x[0,0,:,:].detach().cpu().numpy())
-            plt.legend()
-            plt.savefig('cnn_feature_map_0.png')
-            fig=plt.figure()
-            plt.imshow(x[0,1,:,:].detach().cpu().numpy())
-            plt.legend()
-            plt.savefig('cnn_feature_map_1.png')
-            fig=plt.figure()
-            plt.imshow(x[0,2,:,:].detach().cpu().numpy())
-            plt.legend()
-            plt.savefig('cnn_feature_map_2.png')
+        
 
         
         x=enc_out.view(B,N,enc_out.shape[1],enc_out.shape[2],enc_out.shape[3])
@@ -233,9 +221,25 @@ class GATPlanner(nn.Module):
         
         x=self.gat(x)
         gat_time=time.time()
+        
         # MLP
         if "CNNDecoder" in self.config.keys():
             x=x.reshape(B*N,-1,H,W)
+            if test:
+            # visualize the feature map
+                import matplotlib.pyplot as plt
+                fig=plt.figure()
+                plt.imshow(x[0,0,:,:].detach().cpu().numpy())
+                plt.legend()
+                plt.savefig('cnn_feature_map_0.png')
+                fig=plt.figure()
+                plt.imshow(x[0,1,:,:].detach().cpu().numpy())
+                plt.legend()
+                plt.savefig('cnn_feature_map_1.png')
+                fig=plt.figure()
+                plt.imshow(x[0,2,:,:].detach().cpu().numpy())
+                plt.legend()
+                plt.savefig('cnn_feature_map_2.png')
             x=torch.cat([x,enc_out],dim=1)
         else:
             x=x.reshape(B*N,-1)
