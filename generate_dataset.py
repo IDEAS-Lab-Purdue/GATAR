@@ -41,7 +41,7 @@ if __name__ == "__main__":
     #check if experiment name exists
     if not os.path.exists(dir+'map_dict.json') or not os.path.exists(dir+'params.yaml'):
         print(f'creating new experiment {name} with {agent_num} agents')
-        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 20')
+        os.system(f'python3 utils/create_env.py --config {args.config} --map_num 50')
     else:
         print(f'loading experiment {name} with {agent_num} agents')
     # wait for the environment to be created

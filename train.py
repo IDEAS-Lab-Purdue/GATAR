@@ -166,6 +166,8 @@ def train():
         tb_writer.add_scalar('train_loss',epoch_loss,epoch)
         scheduler.step()
         tb_writer.add_scalar('lr',scheduler.get_lr()[0],epoch)
+        save_dict={'epoch':epoch,'model_state_dict':model.state_dict()}
+        torch.save(save_dict,os.path.join(exp_dir,'last_model.pth'))
         if epoch%10==0:
             epoch_loss,acc=val_epoch()
             print(f'epoch {epoch} loss {epoch_loss}')
@@ -228,8 +230,8 @@ if __name__ == "__main__":
     log.info(f'train dataset size {len(train_dataset)}')
     log.info(f'val dataset size {len(val_dataset)}')
     batch_size = config['batch_size']
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=8,prefetch_factor=8)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=8,prefetch_factor=8)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=16,prefetch_factor=8)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=16,prefetch_factor=8)
     # visulize the data
     for i, data in enumerate(train_loader):
         obs,adj,grid,action = data

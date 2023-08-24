@@ -1,4 +1,4 @@
-config_name: 20target_w_prior_2K
+config_name: 20target_w_prior_5K_long_sensing_range
 
 weight_decay: 0.00001
 lr: 0.00001
@@ -28,7 +28,7 @@ agent:
   UAV1:
     type: UAV
     num: 3
-    sensing_range: 4
+    sensing_range: 8
     max_speed: 1
      
 network:
