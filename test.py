@@ -27,7 +27,7 @@ if __name__ == '__main__':
     data_root = args.data
 
     config = yaml.load(open(os.path.join(exp_root,'params.yaml'), 'r'), Loader=yaml.FullLoader)
-    config['agent']['UAV1']['num']=1
+    config['agent']['UAV1']['num']=3
     map_path = os.path.join(data_root,'map_dict.json')
     model = GATPlanner(config)
     # load model
@@ -68,13 +68,13 @@ if __name__ == '__main__':
             frames.append(frame)
             # observe
             obs=team.observe(env.grid).unsqueeze(0).permute(0,1,4,2,3).to(device)
-            if 'preprocess' in config.keys():
-                if config['preprocess']:
-                    from agent.preprocessor.HetPreprocessor import Preprocessor
-                    preprocessor=Preprocessor()
-                    B,N,C,H,W=obs.shape
-                    obs=obs.view(B*N,C,H,W)
-                    obs=preprocessor(obs).view(B,N,C,H,W)
+            if config['preprocess']['enable']:
+                
+                from agent.preprocessor.HetPreprocessor import Preprocessor
+                preprocessor=Preprocessor(config['preprocess'])
+                B,N,C,H,W=obs.shape
+                obs=obs.view(B*N,C,H,W)
+                obs=preprocessor(obs).view(B,N,-1,H,W)
             # get adj matrix
             adj_mat=team.get_adj_mat()
             # get adj_list

@@ -9,6 +9,10 @@ class Preprocessor(nn.Module):
     
     def __init__(self, config=None):
         super(Preprocessor, self).__init__()
+        if config is None:
+            raise Exception("config is None")
+        self.history=config['history']
+        self.mul = config['mul']
         
         
 
@@ -17,15 +21,29 @@ class Preprocessor(nn.Module):
         x: (B, C, H, W)
         output: (B, C', H, W)
         '''
-        x[:,2,:,:]=self.create_target_map_batch(x[:,2,:,:])
-        x[:,1,:,:]=self.create_cost_map_batch(x[:,1,:,:])
+        c_new=3
+        if self.history:
+            c_new+=1
+        if self.mul:
+            c_new+=1
+        output = torch.zeros(x.shape[0], c_new, x.shape[2], x.shape[3], device=x.device)
+        output=[]
+        output.append(x[:,0,:,:])
+        output.append(self.create_target_map_batch(x[:,2,:,:]))
+        output.append(self.create_cost_map_batch(x[:,1,:,:]))
 
-        # element-wise multiplication
-        #x[:,2,:,:]=x[:,2,:,:]*x[:,1,:,:]
+
+        if self.history:
+            output.append(self.create_target_map_batch(x[:,3,:,:],sigma_x=0.5,sigma_y=0.5))
+        if self.mul:
+            output.append(output[1]*output[2])
+
+        output=torch.stack(output,dim=1)
         
-        return x
+        return output
     
-    
+    def create_history_map(self, x):
+        pass
     
     def create_cost_map_batch(self, bool_matrix, sigma_x=1, sigma_y=1):
         '''

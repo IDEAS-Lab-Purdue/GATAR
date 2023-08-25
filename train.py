@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from model.GAT_ml import GATPlanner
 from utils.setupEXP import start as st
 import time
+from agent.preprocessor.HetPreprocessor import Preprocessor
 
 import numpy as np
 
@@ -230,9 +231,10 @@ if __name__ == "__main__":
     log.info(f'train dataset size {len(train_dataset)}')
     log.info(f'val dataset size {len(val_dataset)}')
     batch_size = config['batch_size']
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=16,prefetch_factor=8)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=16,prefetch_factor=8)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=12,prefetch_factor=8)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=12,prefetch_factor=8)
     # visulize the data
+    '''
     for i, data in enumerate(train_loader):
         obs,adj,grid,action = data
         obs_sample=obs[0]
@@ -249,7 +251,9 @@ if __name__ == "__main__":
             ax.set_xlim(0,15)
             ax.set_ylim(0,15)
             ax.set_aspect('equal')
+            print(obs_sample.shape)
             observation_test=obs_sample[j]
+            print(observation_test.shape)   
             local_obstacles = np.where(observation_test[0,:,:]==1)
             for i in range(len(local_obstacles[0])):
                 ax.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
@@ -260,20 +264,21 @@ if __name__ == "__main__":
             for i in range(len(observed_area[0])):
                 ax.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
             # draw the ego agent
-            ego_pos=np.where(observation_test[1,:,:]==1)
+            ego_pos=np.where(observation_test[1,:,:]>0.5)
+            print(ego_pos)
             ax.plot(ego_pos[0][0]+0.5,ego_pos[1][0]+0.5,'b^',markersize=1)
             ax.set_title(f'action {action_sample[j]}')
         
         fig.savefig(os.path.join(exp_dir,'obs.png'))
         break
-
+    '''
     
 
     model = GATPlanner(config)
     if "initialization" in config.keys() and not args.con_train:
         model.init_params()
     if args.con_train:
-        save_dict = torch.load(os.path.join(args.exp_dir,'best_model.pth'))
+        save_dict = torch.load(os.path.join(args.exp_dir,'last_model.pth'))
         model.load_state_dict(save_dict['model_state_dict'])
         current_epoch = save_dict['epoch']
         log.info(f'continue training from epoch {current_epoch}')

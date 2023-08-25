@@ -1,4 +1,4 @@
-config_name: 20target_w_prior_5K_long_sensing_range
+config_name: 20target_w_prior_5K_history_pos
 
 weight_decay: 0.00001
 lr: 0.00001
@@ -6,7 +6,10 @@ batch_size: 512
 
 loss: weighted
 prior: False
-preprocess: True
+preprocess: 
+  enable: True
+  history: True
+  mul: False
 initialization:
   type: kaiming
 
@@ -28,7 +31,7 @@ agent:
   UAV1:
     type: UAV
     num: 3
-    sensing_range: 8
+    sensing_range: 4
     max_speed: 1
      
 network:
@@ -54,13 +57,13 @@ network:
     attention_mode: KeyQuery
     K: 1
     heads: 3
-    input_feature: [675,16]
+    input_feature: [900,16]
     output_feature: [16,225]
     activation: relu
 
   CNNDecoder:
     
-    channel: [6,8,1]
+    channel: [7,8,1]
     kernel_size: [3,3]
     activation: relu
     dropout: 0.05

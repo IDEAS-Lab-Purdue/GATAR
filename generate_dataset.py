@@ -66,9 +66,10 @@ if __name__ == "__main__":
     configs.update({'device':device})
     dataset_dict={}
     prioritized_dataset_dict={}
-    #save the dataset_dict to json file
-    torch.save(dataset_dict,dir+'dataset_dict.pt')
-    torch.save(prioritized_dataset_dict,dir+'prioritized_dataset_dict.pt')
+    try:
+        store_history = configs['preprocess']['history']
+    except:
+        store_history = False
     
     for key in tqdm(map_dict.keys()):
         
@@ -98,6 +99,8 @@ if __name__ == "__main__":
             allocated_tasks = np.zeros([team.agent_num,2])
             found_path = [None]*team.agent_num
             frames = []
+            history_position = []
+
             
             while env.targets.shape[0]!=0:
 
@@ -199,6 +202,9 @@ if __name__ == "__main__":
                             'agent_pos':agent_pos.astype(int),
                             'grid':env.grid.copy().astype(int),
                             'actions':actions.astype(int)}
+                if store_history:
+                    history_position.append(agent_pos)
+                    data_point.update({'history_position':history_position.copy()})
                 data_points.append(data_point)
                 if args.render and key=='0' and k==0:
                     frame=env.vis(obs)
