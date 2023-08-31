@@ -8,7 +8,7 @@ from model.GAT_ml import GATPlanner
 from utils.setupEXP import start as st
 import time
 from agent.preprocessor.HetPreprocessor import Preprocessor
-
+import random
 import numpy as np
 
 DIRECTIONS = torch.tensor([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]])
@@ -19,168 +19,6 @@ def parser():
     parser.add_argument('--con_train',action='store_true',default=False)
     parser.add_argument('--test',action='store_true',default=False)
     return parser.parse_args()
-def train_epoch():
-    model.train()
-    epoch_loss=[]
-    for i, data in enumerate(train_loader):
-        obs,adj,grid,action = data
-        adj=adj.to(device)
-        obs=obs.to(device)
-        action=action.to(device)
-        # generate adjacency matrix from obs
-        adj=adj.squeeze(1)
-        SList=[adj]
-        for l in range(config['network']['Fusion']['K']-1):
-            adj = torch.bmm(adj,adj)
-            SList.append(adj)
-        if "NormS" in config['network'].keys():
-            if config['network']['NormS']:
-                for i in range(len(SList)):
-                    S=SList[i]
-                    eigenvalues=torch.linalg.eig(S)[0]
-                    eigenvalues=torch.real(eigenvalues)
-                    max_eigenvalue=torch.max(eigenvalues,dim=1)[0].unsqueeze(1).unsqueeze(1)
-                    S=S/max_eigenvalue
-                    SList[i]=S
-        
-        if "non_ego" in config['network'].keys():
-                if config['network']['non_ego']:
-                    for i in range(len(SList)):
-                        S=SList[i]
-                        # set diagonal elements to 0
-                        S[:,range(S.shape[1]),range(S.shape[1])]=0
-                        SList[i]=S
-        SList=torch.stack(SList,dim=1)
-        model.add_graph(SList)
-        
-        
-        
-        if "loss" in config.keys():
-            if config['loss']=="MSE":
-                action_pred = model(obs)
-                DIRECTIONS = torch.tensor([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]]).float().to(device)
-                action = DIRECTIONS[action]
-            elif config['loss']=="weighted":
-                action_pred = model(obs).view(action.shape[0],5,-1)
-                
-            else:
-                raise NotImplementedError
-        else:
-            action_pred = model(obs).view(action.shape[0],config['network']['MLP']['output_feature'][-1],-1)
-        
-        
-        loss = criterion(action_pred,action)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        epoch_loss.append(loss.item())
-        if "loss" in config.keys():
-            acc=0
-        else:
-            acc=(action_pred.argmax(dim=1)==action).sum().item()/action.shape[0]
-    
-    epoch_loss=sum(epoch_loss)/len(epoch_loss)
-    log.info(f'train loss {epoch_loss}')
-
-    return epoch_loss,acc
-def val_epoch():
-    model.eval()
-    epoch_loss=[]
-    with torch.no_grad():
-        acc_num=0
-        total_num=0
-        for i, data in enumerate(val_loader):
-            obs,adj,grid,action = data
-            adj=adj.to(device)
-            obs=obs.to(device)
-            action=action.to(device)
-            # generate adjacency matrix from obs
-            adj=adj.squeeze(1)
-            SList=[adj]
-            for l in range(config['network']['Fusion']['K']-1):
-                adj = torch.bmm(adj,adj)
-                SList.append(adj)
-            if "NormS" in config['network'].keys():
-                if config['network']['NormS']:
-                    for i in range(len(SList)):
-                        S=SList[i]
-                        eigenvalues=torch.linalg.eig(S)[0]
-                        eigenvalues=torch.real(eigenvalues)
-                        max_eigenvalue=torch.max(eigenvalues,dim=1)[0].unsqueeze(1).unsqueeze(1)
-                        S=S/max_eigenvalue
-                        SList[i]=S
-            if "non_ego" in config['network'].keys():
-                if config['network']['non_ego']:
-                    for i in range(len(SList)):
-                        S=SList[i]
-                        S[:,range(S.shape[1]),range(S.shape[1])]=0
-                        SList[i]=S
-            
-            SList=torch.stack(SList,dim=1)
-            model.add_graph(SList)
-            
-            
-            
-            if "loss" in config.keys():
-                if config['loss']=="MSE":
-                    action_pred = model(obs)
-                    DIRECTIONS = torch.tensor([[0,0],[0, 1], [0, -1], [1, 0], [-1, 0]]).to(device)
-                    
-                    action = DIRECTIONS[action]
-                elif config['loss']=="weighted":
-                    action_pred = model(obs,args.test).reshape(action.shape[0],5,-1)
-                    
-                    
-                else:
-                    raise NotImplementedError
-            else:
-                action_pred = model(obs,args.test).reshape(action.shape[0],config['network']['MLP']['output_feature'][-1],-1)
-            
-            loss = criterion(action_pred,action)
-            # log.info("action_pred_prob: {}".format(action_pred[0]))
-            # log.info("action_pred: {}".format(action_pred[0].argmax(dim=0)))
-            # log.info("action_gt: {}".format(action[0]))
-            epoch_loss.append(loss.item())
-            if "loss" in config.keys():
-                if config['loss']=="MSE":
-                    acc=0
-                else:
-                    acc=(action_pred.argmax(dim=1)==action).sum().item()
-            else:
-                acc=(action_pred.argmax(dim=1)==action).sum().item()
-            acc_num+=acc
-            total_num+=action.shape[0]*action.shape[1]
-            if args.test:
-                break
-        acc=acc_num/total_num
-        epoch_loss=sum(epoch_loss)/len(epoch_loss)
-    return epoch_loss,acc
-
-def train():
-    max_epoch = 5000
-    best_acc=0
-    if args.test:
-        val_epoch()
-        max_epoch=current_epoch
-    for epoch in range(current_epoch,max_epoch):
-        epoch_loss,acc=train_epoch()
-        tb_writer.add_scalar('train_loss',epoch_loss,epoch)
-        scheduler.step()
-        tb_writer.add_scalar('lr',scheduler.get_lr()[0],epoch)
-        save_dict={'epoch':epoch,'model_state_dict':model.state_dict()}
-        torch.save(save_dict,os.path.join(exp_dir,'last_model.pth'))
-        if epoch%10==0:
-            epoch_loss,acc=val_epoch()
-            print(f'epoch {epoch} loss {epoch_loss}')
-            tb_writer.add_scalar('val_loss',epoch_loss,epoch)
-            tb_writer.add_scalar('val_acc',acc,epoch)
-            log.info(f'epoch {epoch} loss {epoch_loss} acc {acc}')
-            if acc>best_acc:
-                best_acc=acc
-                save_dict={'epoch':epoch,'model_state_dict':model.state_dict()}
-                torch.save(save_dict,os.path.join(exp_dir,'best_model.pth'))
-                log.info(f'best model saved at epoch {epoch}')
-
 def weighted_loss(output,target):
 
     weight_mat=torch.tensor(
@@ -201,6 +39,135 @@ def weighted_loss(output,target):
         losses[i] *= weight_mat[target[i], preds[i]]
     
     return losses.mean()
+def adj2SList(adj,config):
+    SList=[adj]
+    for l in range(config['network']['Fusion']['K']-1):
+        adj = torch.bmm(adj,adj)
+        SList.append(adj)
+    if "NormS" in config['network'].keys():
+            if config['network']['NormS']:
+                for i in range(len(SList)):
+                    S=SList[i]
+                    eigenvalues=torch.linalg.eig(S)[0]
+                    eigenvalues=torch.real(eigenvalues)
+                    max_eigenvalue=torch.max(eigenvalues,dim=1)[0].unsqueeze(1).unsqueeze(1)
+                    S=S/max_eigenvalue
+                    SList[i]=S
+        
+    if "non_ego" in config['network'].keys():
+            if config['network']['non_ego']:
+                for i in range(len(SList)):
+                    S=SList[i]
+                    # set diagonal elements to 0
+                    S[:,range(S.shape[1]),range(S.shape[1])]=0
+                    SList[i]=S
+    SList=torch.stack(SList,dim=1)
+    return SList
+def train_epoch(epoch_num):
+    model.train()
+    epoch_loss=[]
+    for i, data in enumerate(train_loader):
+        obs,adj,pos,task = data
+        adj=adj.to(device)
+        obs=obs.to(device)
+        task=task.to(device)
+        pos=pos.to(device)
+        
+
+        # generate adjacency matrix from obs
+        adj=adj.squeeze(1)
+        SList=adj2SList(adj,config)
+        model.add_graph(SList)
+        
+        #
+        task_pred=model(obs)
+        # task pred:  batch_size*num_agents*2(x,y) --float
+        # obs: batch_size*num_agents*channel*H*W 
+            # channel: 4 (by default)
+            # 0: obstacle map --0/1
+            # 1: target map --float gaussian distributions around observed targets
+            # 2: cost map --float (currently not "extended" only a gaussian distribution centered at the ego agent)
+            # 3: element-wise product of 1,2 --float
+
+        
+        
+        loss = criterion(task_pred,task)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        epoch_loss.append(loss.item())
+    
+
+    epoch_loss=sum(epoch_loss)/len(epoch_loss)
+    log.info(f'epoch {epoch_num} |train loss {epoch_loss}')
+
+    return epoch_loss
+def val_epoch():
+    model.eval()
+    epoch_loss=[]
+    with torch.no_grad():
+        total_num=0
+        distances=[]
+        for i, data in enumerate(val_loader):
+            obs,adj,pos,task = data
+            adj=adj.to(device)
+            obs=obs.to(device)
+            task=task.to(device)
+            pos=pos.to(device)
+            
+            adj=adj.squeeze(1)
+            SList=adj2SList(adj,config)
+            model.add_graph(SList)
+            task_pred=model(obs) #B*N*2
+            # calculate the distance between prediction and ground truth
+            distance=torch.norm(task_pred-task,dim=2) #B*N
+            distance=distance.view(-1) #B*N
+            distances.append(distance)
+
+
+            output_num=random.randint(0,task_pred.shape[0]-1)
+            
+            loss = criterion(task_pred,task)
+            epoch_loss.append(loss.item())
+    
+    distances=torch.cat(distances,dim=0)
+    distances=distances.cpu().numpy()
+    # calculate the 50% percentile distance, average distance, and 90% percentile distance
+    percentile50=np.percentile(distances,50)
+    percentile90=np.percentile(distances,90)
+    mean_distance=np.mean(distances)
+    stat=[percentile50,percentile90,mean_distance]
+
+
+    epoch_loss=sum(epoch_loss)/len(epoch_loss)
+    return epoch_loss,stat
+def train():
+    max_epoch = 5000
+    best_loss=None
+    
+    for epoch in range(current_epoch,max_epoch):
+        epoch_loss=train_epoch(epoch)
+        tb_writer.add_scalar('train_loss',epoch_loss,epoch)
+        scheduler.step()
+        tb_writer.add_scalar('lr',scheduler.get_last_lr()[-1],epoch)
+        save_dict={'epoch':epoch,'model_state_dict':model.state_dict()}
+        torch.save(save_dict,os.path.join(exp_dir,'last_model.pth'))
+        if epoch%10==0:
+            epoch_loss,stat=val_epoch()
+            print(f'epoch {epoch} loss {epoch_loss}')
+            tb_writer.add_scalar('val_loss',epoch_loss,epoch)
+            log.info(f'epoch {epoch} |VAL loss {epoch_loss}')
+            log.info(f'epoch {epoch} |VAL 50% percentile distance {stat[0]}')
+            log.info(f'epoch {epoch} |VAL 90% percentile distance {stat[1]}')
+            log.info(f'epoch {epoch} |VAL mean distance {stat[2]}')
+            tb_writer.add_scalar('val_50%_percentile_distance',stat[0],epoch)
+            tb_writer.add_scalar('val_90%_percentile_distance',stat[1],epoch)
+            
+            if best_loss is None or epoch_loss<best_loss:
+                best_loss=epoch_loss
+                save_dict={'epoch':epoch,'model_state_dict':model.state_dict()}
+                torch.save(save_dict,os.path.join(exp_dir,'best_model.pth'))
+                log.info(f'best model saved at epoch {epoch}')
 
         
     
@@ -230,49 +197,11 @@ if __name__ == "__main__":
     val_dataset = myDataset(config,phase="val")
     log.info(f'train dataset size {len(train_dataset)}')
     log.info(f'val dataset size {len(val_dataset)}')
+
+
     batch_size = config['batch_size']
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=12,prefetch_factor=8)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=12,prefetch_factor=8)
-    # visulize the data
-    '''
-    for i, data in enumerate(train_loader):
-        obs,adj,grid,action = data
-        obs_sample=obs[0]
-        action_sample=action[0]
-        from matplotlib import pyplot as plt
-        fig=plt.figure()
-        for j in range(3):
-            ax=fig.add_subplot(1,3,j+1)
-            ax.set_xticks(np.arange(0,16,1))
-            ax.set_yticks(np.arange(0,16,1))
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            ax.grid(True)
-            ax.set_xlim(0,15)
-            ax.set_ylim(0,15)
-            ax.set_aspect('equal')
-            print(obs_sample.shape)
-            observation_test=obs_sample[j]
-            print(observation_test.shape)   
-            local_obstacles = np.where(observation_test[0,:,:]==1)
-            for i in range(len(local_obstacles[0])):
-                ax.add_patch(plt.Rectangle((local_obstacles[0][i],local_obstacles[1][i]),1,1,fill=True,color='k'))
-            # draw observed targets map
-            plt.imshow(observation_test[2,-1:,:],cmap='Reds',alpha=0.5)
-            # add a dim yellow background on the observed area
-            observed_area = np.where(observation_test[0,:,:]<0)
-            for i in range(len(observed_area[0])):
-                ax.add_patch(plt.Rectangle((observed_area[0][i],observed_area[1][i]),1,1,fill=True,color='black',alpha=0.1))
-            # draw the ego agent
-            ego_pos=np.where(observation_test[1,:,:]>0.5)
-            print(ego_pos)
-            ax.plot(ego_pos[0][0]+0.5,ego_pos[1][0]+0.5,'b^',markersize=1)
-            ax.set_title(f'action {action_sample[j]}')
-        
-        fig.savefig(os.path.join(exp_dir,'obs.png'))
-        break
-    '''
-    
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=12,prefetch_factor=16)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=12,prefetch_factor=16)
 
     model = GATPlanner(config)
     if "initialization" in config.keys() and not args.con_train:
@@ -284,27 +213,24 @@ if __name__ == "__main__":
         log.info(f'continue training from epoch {current_epoch}')
     else:
         current_epoch = 0
+    
     log.info('model:')
     log.info(model)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    log.info(f'device: {device}')
     model.to(device)
-    
-
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'],weight_decay=config['weight_decay'])
-    if "lr_reset" in config.keys():
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100, eta_min=3e-6)
+
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
+    
+    criterion = torch.nn.MSELoss()
+    
+    if config['loss']=="MSE":
+        criterion = torch.nn.MSELoss()
+    elif config['loss']=="weighted":
+        criterion = weighted_loss
     else:
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
-    
-    
-    criterion = torch.nn.CrossEntropyLoss()
-    if "loss" in config.keys():
-        if config['loss']=="MSE":
-            criterion = torch.nn.MSELoss()
-        elif config['loss']=="weighted":
-            criterion = weighted_loss
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
     train()
     
 

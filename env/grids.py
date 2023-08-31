@@ -37,12 +37,17 @@ class gridWorld(baseEnv):
             print("Agents' positions: ",self.agents_pos.shape)
             print('------------------------')
 
-    def sync(self,agents):
-        self.agents_pos = agents.agents_pos
-        self.agents_observation = agents.agents_observation
+    
+    def sync(self):
+        
         self.grid[:,:,1]=0
-        for i in range(len(agents.agents_type)):
+        for i in range(self.agents_pos.shape[0]):
             self.grid[self.agents_pos[i,0],self.agents_pos[i,1],1] = 1
+        self.grid[:,:,2]=0
+        for i in range(self.targets.shape[0]):
+            self.grid[self.targets[i,0],self.targets[i,1],2] = 1
+        
+
 
     def vis(self,obs,draw_arrows=False,store=False,filename=None):
         #visualize the grid
@@ -172,6 +177,9 @@ class gridWorld(baseEnv):
         is_out_of_bound_y= np.logical_or(new_agents_pos[:, 1] < 0, new_agents_pos[:, 1] >= self.params['grid_size']['y'])
         is_out_of_bound = is_out_of_bound_x | is_out_of_bound_y
 
+        print("is_out_of_bound: {}".format(is_out_of_bound.shape))
+        print("new_agents_pos: {}".format(new_agents_pos.shape))
+        print("agents.agents_pos: {}".format(agents.agents_pos.shape))
         new_agents_pos[is_out_of_bound] = agents.agents_pos[is_out_of_bound]
 
         new_agents_pos = new_agents_pos.astype(int)

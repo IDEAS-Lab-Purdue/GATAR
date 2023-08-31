@@ -86,6 +86,19 @@ class Preprocessor(nn.Module):
 
 
         return gaussian_matrix
+
+
+    def create_extended_cost_map(self, observation):
+        '''
+        observation: (1, C, H, W)
+        '''
+        assert observation.shape[0] == 1
+        ego_position = torch.nonzero(observation[0, 1, :, :] > 0)
+        targeted_position = torch.nonzero(observation[0, 2, :, :] > 0)
+        raise NotImplementedError
+        
+        
+        print(ego_position.shape)
         
     
     def create_oc_map(self, x):

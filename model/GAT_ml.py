@@ -234,7 +234,7 @@ class GATPlanner(nn.Module):
             if 'dropout' in self.config['MLP'].keys():
                 self.decoder_layer.append(nn.Dropout(self.config['MLP']['dropout']))
             if 'batch_norm' in self.config['MLP'].keys():
-                if self.config['MLP']['batch_norm']:
+                if self.config['MLP']['batch_norm'] and l!=len(self.config['MLP']['output_feature'])-2:
                     self.decoder_layer.append(nn.BatchNorm1d(out_dim))
             self.decoder_layer.append(nn.ReLU())
         if self.config['MLP']['output_feature'][-1]==5:

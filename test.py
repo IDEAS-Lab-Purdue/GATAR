@@ -27,7 +27,7 @@ if __name__ == '__main__':
     data_root = args.data
 
     config = yaml.load(open(os.path.join(exp_root,'params.yaml'), 'r'), Loader=yaml.FullLoader)
-    config['agent']['UAV1']['num']=3
+    
     map_path = os.path.join(data_root,'map_dict.json')
     model = GATPlanner(config)
     # load model
@@ -48,26 +48,35 @@ if __name__ == '__main__':
     map = map_dict[map_id]
     # generate environment
     env = gridWorld(config['env'],map)
+    config['agent']['UAV1']['num']=1
+    config['agent']['UGV1']['num']=4
     print("env generated from map {}".format(map_id))
      # initialize agents
     team = MRS(config)
     team.reset()
+    team.agents_pos=np.zeros_like(team.agents_pos)
+    env.agents_pos = team.agents_pos
     print("agents reset")
-
-    env.sync(team)
+    env.sync()
     print("agents initialized")
     # print info
+    #reassign target
+    new_targets_num = 5
+    
     print("targets: {}".format(env.targets))
+
     print("obstacles: {}".format(env.obstacles))
     print("agents_pos: {}".format(team.agents_pos))
     frames=[]
     with torch.no_grad():
         for t in range(100):
             # visualize
-            frame=env.vis(team.agents_observation)
-            frames.append(frame)
+            
             # observe
             obs=team.observe(env.grid).unsqueeze(0).permute(0,1,4,2,3).to(device)
+            frame=env.vis(team.agents_observation)
+            # save frame
+            imageio.imwrite(os.path.join(exp_root,'{}.png'.format(t)),frame)
             if config['preprocess']['enable']:
                 
                 from agent.preprocessor.HetPreprocessor import Preprocessor
@@ -104,23 +113,19 @@ if __name__ == '__main__':
             model.add_graph(SList)
             
             print("obs shape: {}".format(obs.shape))
-            action = model(obs)
+            assigned_pos = model(obs)
+            assigned_pos_int = assigned_pos.round().long().squeeze(0)
+            team.agents_pos = assigned_pos_int.cpu().numpy()
+            env.agents_pos = team.agents_pos
+            env.sync()
 
-            print("action: {}".format(action))
-            # action shape:
-            print("action shape: {}".format(action.shape))
-
-            prob_action=[]
-
-            #random select based on probability
-            for agent in range(action.shape[1]):
-                prob_action.append(torch.multinomial(action[0,agent],1).unsqueeze(0).cpu())
-                
+            print("assigned_pos shape: {}".format(assigned_pos.shape))
+            print("assigned_pos: {}".format(assigned_pos))
+            input()
             
-            action=np.array(prob_action)
             
-            action=action.astype(int)
-            print("action: {}".format(action))  
+            action=np.zeros(5).astype(int)
+            
             _,done=env.step(team,action)
             print("targets: {}".format(env.targets.tolist()))
 
