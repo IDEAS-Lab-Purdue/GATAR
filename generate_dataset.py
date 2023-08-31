@@ -194,7 +194,10 @@ if __name__ == "__main__":
                 pf = tcod.path.Pathfinder(temp_graph)
                 pf.add_root((agents_pos[i,0],agents_pos[i,1]))
                 found_path = pf.path_to((allocated_tasks[i,0],allocated_tasks[i,1]))
-                action=found_path[1]-agents_pos[i,:]
+                if len(found_path)==1:
+                    action=np.array([0,0])
+                else:
+                    action=found_path[1]-agents_pos[i,:]
                 actions.append(action)
                 #print("agent {} action {}".format(i,action))
             
@@ -227,7 +230,7 @@ if __name__ == "__main__":
             data_point={'obs':observation.numpy().astype(int),
                         'agent_pos':agents_pos.astype(int),
                         'allocated_tasks':allocated_tasks.astype(int),
-                        'actions':actions.astype(int)}
+                        'actions':actions}
             token=key+str(k)+str(time.time())
             token=hash(token)
             dataset_dict.update({token:data_point})

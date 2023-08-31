@@ -10,4 +10,4 @@ conda activate py37
 module load gcc
 
 
-python train.py --data_root dataset/20target_pos_remove_unobserved_15x15_agent3 --con_train --exp_dir exp/20target_pos_remove_unobserved_agent_3/08-25-23-31-32
+python train.py --data_root dataset/end2end_homo_200K_15x15_agent3 --con_train --exp_dir exp/end2end_homo_200K_local_agent_3/08-30-21-11-01

@@ -11,8 +11,8 @@ class ChannelAttention(nn.Module):
         self.global_avg_pool = nn.AdaptiveMaxPool2d(1)
         
         # 全连接层
-        self.fc1 = nn.Linear(in_channels, in_channels // reduction_ratio)
-        self.fc2 = nn.Linear(in_channels // reduction_ratio, in_channels)
+        self.fc1 = nn.Linear(in_channels, in_channels * reduction_ratio)
+        self.fc2 = nn.Linear(in_channels * reduction_ratio, in_channels)
         
         # 激活函数
         self.relu = nn.ReLU()
@@ -171,7 +171,7 @@ class GATPlanner(nn.Module):
 
         self.decoder_layer=[]
         if "channel_att" in self.config.keys():
-            self.channel_att=ChannelAttention(self.config['CNNDecoder']['input_channel'])
+            self.channel_att=ChannelAttention(self.config['CNNDecoder']['input_channel'],reduction_ratio=4)
             self.decoder_layer.append(self.channel_att)
         
         
@@ -200,7 +200,7 @@ class GATPlanner(nn.Module):
                 self.decoder_layer.append(activation)
             if "dropout" in self.config['CNNDecoder'].keys():
                 self.decoder_layer.append(nn.Dropout(self.config['CNNDecoder']['dropout']))
-            self.decoder_layer.append(nn.Flatten(start_dim=1))
+            
         else:
             if self.config['CNNDecoder']['RES']:
                 for l in range(len(self.config['CNNDecoder']['kernel_size'])-1):
@@ -223,25 +223,26 @@ class GATPlanner(nn.Module):
                         self.decoder_layer.append(nn.BatchNorm2d(outchannel))
                 if "dropout" in self.config['CNNDecoder'].keys():
                     self.decoder_layer.append(nn.Dropout(self.config['CNNDecoder']['dropout']))
-                self.decoder_layer.append(nn.Flatten(start_dim=1))
-
+                #self.decoder_layer.append(nn.Flatten(start_dim=1))
+        self.decoder_layer=nn.Sequential(*self.decoder_layer)
+        self.MLP_layer=[]
         # create MLP
         for l in range(len(self.config['MLP']['output_feature'])-1):
             in_dim=self.config['MLP']['output_feature'][l]
             out_dim=self.config['MLP']['output_feature'][l+1]
 
-            self.decoder_layer.append(nn.Linear(in_dim,out_dim))
+            self.MLP_layer.append(nn.Linear(in_dim,out_dim))
             if 'dropout' in self.config['MLP'].keys():
-                self.decoder_layer.append(nn.Dropout(self.config['MLP']['dropout']))
+                self.MLP_layer.append(nn.Dropout(self.config['MLP']['dropout']))
             if 'batch_norm' in self.config['MLP'].keys():
                 if self.config['MLP']['batch_norm'] and l!=len(self.config['MLP']['output_feature'])-2:
-                    self.decoder_layer.append(nn.BatchNorm1d(out_dim))
-            self.decoder_layer.append(nn.ReLU())
+                    self.MLP_layer.append(nn.BatchNorm1d(out_dim))
+            self.MLP_layer.append(nn.ReLU())
         if self.config['MLP']['output_feature'][-1]==5:
-            self.decoder_layer[-1]=nn.Sigmoid()
+            self.MLP_layer[-1]=nn.Sigmoid()
         else:
-            self.decoder_layer.pop()
-        self.decoder_layer=nn.Sequential(*self.decoder_layer)
+            self.MLP_layer.pop()
+        self.MLP_layer=nn.Sequential(*self.MLP_layer)
     def init_params(self):
 
         #init using kaiming normal
@@ -332,7 +333,13 @@ class GATPlanner(nn.Module):
             x=x.reshape(B*N,-1)
 
         x=self.decoder_layer(x)
-        output=x.reshape(B,N,-1)
+        print(x.shape)
+        x=x.permute(0,2,3,1)
+        print(x.shape)
+        x=x.reshape(B*N*H*W,-1)
+        x=self.MLP_layer(x)
+        output=x.reshape(B,N,H,W,-1)
+        print(output.shape)
         
         return output
     

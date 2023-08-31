@@ -13,6 +13,7 @@ class Preprocessor(nn.Module):
             raise Exception("config is None")
         self.history=config['history']
         self.mul = config['mul']
+        self.extended_cost = config['extended_cost']
         
         
 
@@ -26,11 +27,19 @@ class Preprocessor(nn.Module):
             c_new+=1
         if self.mul:
             c_new+=1
+        observable_region = torch.nonzero(x[:,0,:,:] >= 0)
+        # print(observable_region.shape)
+        # print(observable_region)
+        # input()
         output = torch.zeros(x.shape[0], c_new, x.shape[2], x.shape[3], device=x.device)
         output=[]
         output.append(x[:,0,:,:])
         output.append(self.create_target_map_batch(x[:,2,:,:]))
-        output.append(self.create_cost_map_batch(x[:,1,:,:]))
+        if self.extended_cost:
+            output.append(self.create_extended_cost_map(x,observable_region))
+        else:
+            output.append(self.create_cost_map_batch(x[:,1,:,:]))
+
 
 
         if self.history:
@@ -88,7 +97,7 @@ class Preprocessor(nn.Module):
         return gaussian_matrix
 
 
-    def create_extended_cost_map(self, observation):
+    def create_extended_cost_map(self, observation,observable_region):
         '''
         observation: (1, C, H, W)
         '''

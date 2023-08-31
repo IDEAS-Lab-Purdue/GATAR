@@ -63,6 +63,15 @@ def adj2SList(adj,config):
                     SList[i]=S
     SList=torch.stack(SList,dim=1)
     return SList
+def all2supervised(task_pred,pos):
+    B,N,H,W,_=task_pred.shape
+    b_index=torch.arange(B)[:,None,None,None].long().to(device)
+    N_index=torch.arange(N)[None,:,None,None].long().to(device)
+    x_index=pos[:,:,0][:,:,None,None].long().to(device)
+    y_index=pos[:,:,1][:,:,None,None].long().to(device)
+    supervised_pred=task_pred[b_index,N_index,x_index,y_index].squeeze(2).squeeze(2)
+    return supervised_pred
+
 def train_epoch(epoch_num):
     model.train()
     epoch_loss=[]
@@ -81,7 +90,17 @@ def train_epoch(epoch_num):
         
         #
         task_pred=model(obs)
-        # task pred:  batch_size*num_agents*2(x,y) --float
+        
+        
+        
+        # B*N*H*W*2
+        # use pos to get the task_pred
+        supervised_pred=all2supervised(task_pred,pos)
+
+        
+        
+        
+        
         # obs: batch_size*num_agents*channel*H*W 
             # channel: 4 (by default)
             # 0: obstacle map --0/1
@@ -91,7 +110,7 @@ def train_epoch(epoch_num):
 
         
         
-        loss = criterion(task_pred,task)
+        loss = criterion(supervised_pred,task)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -119,6 +138,7 @@ def val_epoch():
             SList=adj2SList(adj,config)
             model.add_graph(SList)
             task_pred=model(obs) #B*N*2
+            task_pred=all2supervised(task_pred,pos)
             # calculate the distance between prediction and ground truth
             distance=torch.norm(task_pred-task,dim=2) #B*N
             distance=distance.view(-1) #B*N
