@@ -19,4 +19,4 @@ module load gcc
 #python train.py --data_root dataset/20target_w_prior_het_15x15_agent3
 #python train_pyG.py --data_root dataset/20targetPyG_18x18_agent4
 #python train_action.py --exp exp/end2end_homo_200K_agent_3/08-29-16-52-09 --data_root dataset/end2end_homo_200K_15x15_agent3/
-python train.py --data_root dataset/end2end_homo_200K_15x15_agent3
+python train.py --data_root exp/end2end_het_1A2G_agent_3/08-31-14-18-15

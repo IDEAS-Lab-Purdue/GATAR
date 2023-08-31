@@ -88,14 +88,12 @@ def train_epoch(epoch_num):
         SList=adj2SList(adj,config)
         model.add_graph(SList)
         
-        #
+        
         task_pred=model(obs)
-        
-        
         
         # B*N*H*W*2
         # use pos to get the task_pred
-        supervised_pred=all2supervised(task_pred,pos)
+        #supervised_pred=all2supervised(task_pred,pos)
 
         
         
@@ -110,7 +108,7 @@ def train_epoch(epoch_num):
 
         
         
-        loss = criterion(supervised_pred,task)
+        loss = criterion(task_pred,task)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -138,7 +136,7 @@ def val_epoch():
             SList=adj2SList(adj,config)
             model.add_graph(SList)
             task_pred=model(obs) #B*N*2
-            task_pred=all2supervised(task_pred,pos)
+            #task_pred=all2supervised(task_pred,pos)
             # calculate the distance between prediction and ground truth
             distance=torch.norm(task_pred-task,dim=2) #B*N
             distance=distance.view(-1) #B*N

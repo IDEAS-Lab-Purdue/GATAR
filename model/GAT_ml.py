@@ -43,20 +43,24 @@ class ChannelAttention(nn.Module):
 
 class ResBlock(nn.Module):
 
-    def __init__(self,io_channel,hidden_channel,kernel_size,bias=True):
+    def __init__(self,in_channel,hidden_channel,out_channel,kernel_size,bias=True):
         super(ResBlock, self).__init__()
         padding=kernel_size//2
-        self.conv1=nn.Conv2d(io_channel,hidden_channel,kernel_size=kernel_size,stride=1,padding=padding,bias=bias)
+        self.res=(in_channel==out_channel)
+        self.conv1=nn.Conv2d(in_channel,hidden_channel,kernel_size=kernel_size,stride=1,padding=padding,bias=bias)
         self.hidden=nn.Conv2d(hidden_channel,hidden_channel,kernel_size=kernel_size,stride=1,padding=padding,bias=bias)
-        self.conv2=nn.Conv2d(hidden_channel,io_channel,kernel_size=kernel_size,stride=1,padding=padding,bias=bias)
-        self.bn=nn.BatchNorm2d(io_channel)
+        self.conv2=nn.Conv2d(hidden_channel,out_channel,kernel_size=kernel_size,stride=1,padding=padding,bias=bias)
+        self.bn=nn.BatchNorm2d(out_channel)
         self.relu=nn.ReLU()
     def forward(self,x):
         x1=self.relu(self.conv1(x))
         x2=self.relu(self.hidden(x1))
         x3=self.relu(self.conv2(x2))
         x3=self.bn(x3)
-        return x+x3
+        if self.res:
+            return x+x3
+        else:
+            return x3
 
 
 class GNOLayers(nn.Module):
@@ -142,107 +146,71 @@ class GATPlanner(nn.Module):
         self.config = config['network']
         self.H=self.config['x']
         self.W=self.config['y']
-        self.preprocess=False
         
         # create CNN encoder
-        self.encoder_layer=[]
-        self.encoder_layer.append(nn.Sigmoid())
-        for l in range(len(self.config['CNNEncoder']['kernel_size'])):
-            inchannel=self.config['CNNEncoder']['channel'][l]
-            outchannel=self.config['CNNEncoder']['channel'][l+1]
-            kernel_size=self.config['CNNEncoder']['kernel_size'][l]
-            padding=kernel_size//2
-            self.encoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=padding))
-            if self.config['CNNEncoder']['activation'] =='relu':
-                activation=nn.ReLU()
-            elif self.config['CNNEncoder']['activation'] =='leakyrelu':
-                activation=nn.LeakyReLU()
-            elif self.config['CNNEncoder']['activation'] =='tanh':
-                activation=nn.Tanh()
-            elif self.config['CNNEncoder']['activation'] =='sigmoid':
-                activation=nn.Sigmoid()
-            else:
-                raise Exception('Unknown Activation Function')
-            self.encoder_layer.append(activation)
-        self.encoder_layer=nn.Sequential(*self.encoder_layer)
-        self.flatten=nn.Flatten(start_dim=2)
+        if self.config['CNNEncoder']['enable']:
+            self.CNN_encoder=[]
+            for l in range(len(self.config['CNNEncoder']['kernel_size'])):
+                input_channel=self.config['CNNEncoder']['channel'][l]
+                output_channel=self.config['CNNEncoder']['channel'][l+1]
+                hidden_channel=self.config['CNNEncoder']['hidden_channel'][l]
+                kernel_size=self.config['CNNEncoder']['kernel_size'][l]
+                self.CNN_encoder.append(ResBlock(input_channel,hidden_channel,output_channel,kernel_size))
+            if "dropout" in self.config['CNNEncoder'].keys():
+                self.CNN_encoder.append(nn.Dropout(self.config['CNNEncoder']['dropout']))
+            if self.config['CNNEncoder']['batch_norm']:
+                self.CNN_encoder.append(nn.BatchNorm2d(self.config['CNNEncoder']['channel'][-1]))
+            self.CNN_encoder.append(nn.AdaptiveMaxPool2d((1,1)))
+            self.CNN_encoder=nn.Sequential(*self.CNN_encoder)
+
+        if self.config['MLPEncoder']['enable']:
+            self.MLP_encoder=[]
+            for l in range(len(self.config['MLPEncoder']['output_feature'])-1):
+                self.MLP_encoder.append(nn.Linear(self.config['MLPEncoder']['output_feature'][l],self.config['MLPEncoder']['output_feature'][l+1]))
+                if 'dropout' in self.config['MLPEncoder'].keys():
+                    self.MLP_encoder.append(nn.Dropout(self.config['MLPEncoder']['dropout']))
+                self.MLP_encoder.append(nn.ReLU())
+            if self.config['MLPEncoder']['batch_norm']:
+                self.MLP_encoder.append(nn.BatchNorm1d(self.config['MLPEncoder']['output_feature'][-1]))
+            self.MLP_encoder=nn.Sequential(*self.MLP_encoder)
+
+
         # create GAT
         self.gat=GNOLayers(self.config['Fusion'])
 
-        self.decoder_layer=[]
-        if "channel_att" in self.config.keys():
-            self.channel_att=ChannelAttention(self.config['CNNDecoder']['input_channel'],reduction_ratio=4)
-            self.decoder_layer.append(self.channel_att)
-        
-        
-        if "RES" not in self.config['CNNDecoder'].keys():
-            for l in range(len(self.config['CNNDecoder']['kernel_size'])):
-                inchannel=self.config['CNNDecoder']['channel'][l]
-                outchannel=self.config['CNNDecoder']['channel'][l+1]
-                kernel_size=self.config['CNNDecoder']['kernel_size'][l]
-                padding=kernel_size//2
-                #padding value is -inf
-                self.decoder_layer.append(nn.ConstantPad2d(padding,-999))
-                self.decoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=0))
-                if 'batch_norm' in self.config['CNNDecoder'].keys():
-                    if self.config['CNNDecoder']['batch_norm']:
-                        self.decoder_layer.append(nn.BatchNorm2d(outchannel))
-                if self.config['CNNDecoder']['activation'] =='relu':
-                    activation=nn.ReLU()
-                elif self.config['CNNDecoder']['activation'] =='leakyrelu':
-                    activation=nn.LeakyReLU()
-                elif self.config['CNNDecoder']['activation'] =='tanh':
-                    activation=nn.Tanh()
-                elif self.config['CNNDecoder']['activation'] =='sigmoid':
-                    activation=nn.Sigmoid()
-                else:
-                    raise Exception('Unknown Activation Function')
-                self.decoder_layer.append(activation)
-            if "dropout" in self.config['CNNDecoder'].keys():
-                self.decoder_layer.append(nn.Dropout(self.config['CNNDecoder']['dropout']))
-            
-        else:
-            if self.config['CNNDecoder']['RES']:
-                for l in range(len(self.config['CNNDecoder']['kernel_size'])-1):
-                    kernel_size=self.config['CNNDecoder']['kernel_size'][l]
-                    inchannel=self.config['CNNDecoder']['input_channel']
-                    hidden_channel=self.config['CNNDecoder']['hidden_channel'][l]
-                    
-                    #padding value is -inf
-                    self.decoder_layer.append(ResBlock(inchannel,hidden_channel,kernel_size))
-                
-                kernel_size=self.config['CNNDecoder']['kernel_size'][-1]
-                inchannel=self.config['CNNDecoder']['input_channel']
-                outchannel=self.config['CNNDecoder']['output_channel']
-                padding=kernel_size//2
-                #padding value is -inf
-                self.decoder_layer.append(nn.ConstantPad2d(padding,-999))
-                self.decoder_layer.append(nn.Conv2d(inchannel,outchannel,kernel_size,stride=1,padding=0))
-                if 'batch_norm' in self.config['CNNDecoder'].keys():
-                    if self.config['CNNDecoder']['batch_norm']:
-                        self.decoder_layer.append(nn.BatchNorm2d(outchannel))
-                if "dropout" in self.config['CNNDecoder'].keys():
-                    self.decoder_layer.append(nn.Dropout(self.config['CNNDecoder']['dropout']))
-                #self.decoder_layer.append(nn.Flatten(start_dim=1))
-        self.decoder_layer=nn.Sequential(*self.decoder_layer)
-        self.MLP_layer=[]
-        # create MLP
-        for l in range(len(self.config['MLP']['output_feature'])-1):
-            in_dim=self.config['MLP']['output_feature'][l]
-            out_dim=self.config['MLP']['output_feature'][l+1]
+        # create CNN encoder
+        if self.config['CNNDecoder']['enable']:
+            self.CNN_decoder=[]
+            if self.config['CNNDecoder']['channel_att']:
+                self.CNN_decoder.append(ChannelAttention(self.config['CNNDecoder']['channel'][0]))
 
-            self.MLP_layer.append(nn.Linear(in_dim,out_dim))
-            if 'dropout' in self.config['MLP'].keys():
-                self.MLP_layer.append(nn.Dropout(self.config['MLP']['dropout']))
-            if 'batch_norm' in self.config['MLP'].keys():
-                if self.config['MLP']['batch_norm'] and l!=len(self.config['MLP']['output_feature'])-2:
-                    self.MLP_layer.append(nn.BatchNorm1d(out_dim))
-            self.MLP_layer.append(nn.ReLU())
-        if self.config['MLP']['output_feature'][-1]==5:
-            self.MLP_layer[-1]=nn.Sigmoid()
-        else:
-            self.MLP_layer.pop()
-        self.MLP_layer=nn.Sequential(*self.MLP_layer)
+            
+            for l in range(len(self.config['CNNDecoder']['kernel_size'])):
+                input_channel=self.config['CNNDecoder']['channel'][l]
+                output_channel=self.config['CNNDecoder']['channel'][l+1]
+                hidden_channel=self.config['CNNDecoder']['hidden_channel'][l]
+                kernel_size=self.config['CNNDecoder']['kernel_size'][l]
+                self.CNN_decoder.append(ResBlock(input_channel,hidden_channel,output_channel,kernel_size))
+            if "dropout" in self.config['CNNDecoder'].keys():
+                self.CNN_decoder.append(nn.Dropout(self.config['CNNDecoder']['dropout']))
+            if self.config['CNNDecoder']['batch_norm']:
+                self.CNN_decoder.append(nn.BatchNorm2d(self.config['CNNDecoder']['channel'][-1]))
+            self.CNN_decoder.append(nn.AdaptiveMaxPool2d((1,1)))
+            self.CNN_decoder=nn.Sequential(*self.CNN_decoder)
+        
+        if self.config['MLPDecoder']['enable']:
+            self.MLP_decoder=[]
+            for l in range(len(self.config['MLPDecoder']['output_feature'])-1):
+                self.MLP_decoder.append(nn.Linear(self.config['MLPDecoder']['output_feature'][l],self.config['MLPDecoder']['output_feature'][l+1]))
+                if 'dropout' in self.config['MLPDecoder'].keys():
+                    self.MLP_decoder.append(nn.Dropout(self.config['MLPDecoder']['dropout']))
+                self.MLP_decoder.append(nn.ReLU())
+            self.MLP_decoder.pop()
+            if self.config['MLPDecoder']['batch_norm']:
+                self.MLP_decoder.append(nn.BatchNorm1d(self.config['MLPDecoder']['output_feature'][-1]))
+            self.MLP_decoder=nn.Sequential(*self.MLP_decoder)
+
+    
     def init_params(self):
 
         #init using kaiming normal
@@ -275,72 +243,29 @@ class GATPlanner(nn.Module):
         W=x.shape[4]
         x=x.reshape(B*N,x.shape[2],x.shape[3],x.shape[4])
         
+        if self.config['CNNEncoder']['enable']:
+            x=self.CNN_encoder(x)
+            x=x.view(B*N,-1)
+
+        if self.config['MLPEncoder']['enable']:
+            x=self.MLP_encoder(x)
         
-        if tb is not None:
-            # visualize the input
-            import matplotlib.pyplot as plt
-            fig=plt.figure()
-            plt.imshow(x[0,0,:,:].detach().cpu().numpy())
-            plt.colorbar()
-            plt.savefig('cnn_input_0.png')
-            fig=plt.figure()
-            plt.imshow(x[0,1,:,:].detach().cpu().numpy())
-            plt.colorbar()
-            plt.savefig('cnn_input_1.png')
-            fig=plt.figure()
-            plt.imshow(x[0,2,:,:].detach().cpu().numpy())
-            plt.colorbar()
-            plt.savefig('cnn_input_2.png')
+        x=x.view(B,-1,N)
 
 
-        if self.config['CNNEncoder']['RES']:
-            enc_out=self.encoder_layer(x)+x
-        else:
-            enc_out=self.encoder_layer(x)
-        
+        fused_feature = self.gat(x)
 
-        
-        x=enc_out.view(B,N,enc_out.shape[1],enc_out.shape[2],enc_out.shape[3])
-        # Flatten
-        x=self.flatten(x)
-        x=x.reshape(B,N,-1).permute(0,2,1)
-        encoder_time=time.time()
-        # GAT
-        
-        x=self.gat(x)
-        gat_time=time.time()
-        
-        # MLP
-        if "CNNDecoder" in self.config.keys():
+        x=torch.cat([x,fused_feature],dim=1)
+        x=x.view(B*N,-1)
+
+        if self.config['CNNDecoder']['enable']:
             x=x.reshape(B*N,-1,H,W)
-            if test:
-            # visualize the feature map
-                import matplotlib.pyplot as plt
-                fig=plt.figure()
-                plt.imshow(x[0,0,:,:].detach().cpu().numpy())
-                plt.legend()
-                plt.savefig('cnn_feature_map_0.png')
-                fig=plt.figure()
-                plt.imshow(x[0,1,:,:].detach().cpu().numpy())
-                plt.legend()
-                plt.savefig('cnn_feature_map_1.png')
-                fig=plt.figure()
-                plt.imshow(x[0,2,:,:].detach().cpu().numpy())
-                plt.legend()
-                plt.savefig('cnn_feature_map_2.png')
-            x=torch.cat([x,enc_out],dim=1)
-        else:
+            x=self.CNN_decoder(x)
             x=x.reshape(B*N,-1)
-
-        x=self.decoder_layer(x)
-        print(x.shape)
-        x=x.permute(0,2,3,1)
-        print(x.shape)
-        x=x.reshape(B*N*H*W,-1)
-        x=self.MLP_layer(x)
-        output=x.reshape(B,N,H,W,-1)
-        print(output.shape)
+        if self.config['MLPDecoder']['enable']:
+            x=self.MLP_decoder(x)
+        x=x.view(B,N,-1)
         
-        return output
+        return x
     
     
