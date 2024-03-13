@@ -272,6 +272,8 @@ class GATPlanner(nn.Module):
         C=x.shape[2]
         H=x.shape[3]
         W=x.shape[4]
+        
+        
         x=x.reshape(B*N,x.shape[2],x.shape[3],x.shape[4])
         
         
@@ -300,12 +302,13 @@ class GATPlanner(nn.Module):
 
         
         x=enc_out.view(B,N,enc_out.shape[1],enc_out.shape[2],enc_out.shape[3])
+        
         # Flatten
         x=self.flatten(x)
         x=x.reshape(B,N,-1).permute(0,2,1)
         encoder_time=time.time()
         # GAT
-        
+        print(x.shape)
         x=self.gat(x)
         gat_time=time.time()
         

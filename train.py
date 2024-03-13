@@ -53,8 +53,6 @@ def train_epoch():
         SList=torch.stack(SList,dim=1)
         model.add_graph(SList)
         
-        
-        
         if "loss" in config.keys():
             if config['loss']=="MSE":
                 action_pred = model(obs)
@@ -231,8 +229,8 @@ if __name__ == "__main__":
     log.info(f'train dataset size {len(train_dataset)}')
     log.info(f'val dataset size {len(val_dataset)}')
     batch_size = config['batch_size']
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=12,prefetch_factor=8)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=12,prefetch_factor=8)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=4,prefetch_factor=8)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=4,prefetch_factor=8)
     # visulize the data
     '''
     for i, data in enumerate(train_loader):

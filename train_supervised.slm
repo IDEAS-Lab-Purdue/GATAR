@@ -15,6 +15,6 @@ module load gcc
 # python train.py --data_root dataset/20target_w_prior_large_15x15_agent4
 #python train.py --data_root dataset/20target_w_prior_15x15_agent4
 #python train.py --data_root dataset/20target_w_prior_20K_15x15_agent3/
-python train.py --data_root dataset/20target_w_prior_5K_15x15_agent3/
+python train.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/20target_train_6agents_15x15_agent3
 #python train.py --data_root dataset/20target_w_prior_het_15x15_agent3
 #python train_pyG.py --data_root dataset/20targetPyG_18x18_agent4
