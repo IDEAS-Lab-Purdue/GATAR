@@ -1,4 +1,4 @@
-config_name: 20target_train_6agents
+config_name: mixture_map
 
 weight_decay: 0.00001
 lr: 0.00001
@@ -16,7 +16,7 @@ initialization:
 env:
   num_targets: 20
   random_start: True
-  num_agents: 3
+  num_agents: 2
   comm_range: 6
   grid_size:
     x: &x 15
@@ -36,12 +36,12 @@ env:
 agent:
   UAV1:
     type: UAV
-    num: 3
+    num: 1
     sensing_range: 4
     max_speed: 1
   UGV1:
     type: UGV
-    num: 3
+    num: 1
     sensing_range: 4
     max_speed: 1
      

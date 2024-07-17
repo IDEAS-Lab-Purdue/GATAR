@@ -35,19 +35,24 @@ if __name__ == "__main__":
     name=configs['config_name']
     size_x=configs['env']['grid_size']['x']
     size_y=configs['env']['grid_size']['y']
-    agent_num = configs['env']['num_agents']    
+    agent_num = configs['env']['num_agents']
+    map_dir = f'dataset/{name}_{size_x}x{size_y}/'
     dir =f'dataset/{name}_{size_x}x{size_y}_agent{agent_num}/'
     
-    #check if experiment name exists
-    if not os.path.exists(dir+'map_dict.json') or not os.path.exists(dir+'params.yaml'):
+    #check if map exists
+    if not os.path.exists(map_dir+'map_dict.json'):
+        assert False, f"map_dict.json not found in {map_dir}"
         print(f'creating new experiment {name} with {agent_num} agents')
         os.system(f'python3 utils/create_env.py --config {args.config} --map_num 200')
     else:
         print(f'loading experiment {name} with {agent_num} agents')
     # wait for the environment to be created
-    while not os.path.exists(dir+'map_dict.json'):
+    while not os.path.exists(map_dir+'map_dict.json'):
         pass
-
+    
+    # create the dataset folder
+    if not os.path.exists(dir):
+        os.makedirs(dir)
     if os.path.exists(dir+'dataset_dict.pkl'):
         print("dataset already exists")
         exit()
@@ -56,13 +61,13 @@ if __name__ == "__main__":
         exit()
 
     # load the map
-    map_dict = json.load(open(dir+'map_dict.json','r'))
+    map_dict = json.load(open(map_dir+'map_dict.json','r'))
     agent_num = configs['env']['num_agents']
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    log,tb_writer = start(dir)
-    log.info(f'generating datasets for {name} with {agent_num} agents')
-    log.info(f'using device {device}')
+    # log,tb_writer = start(dir)
+    # log.info(f'generating datasets for {name} with {agent_num} agents')
+    # log.info(f'using device {device}')
     configs.update({'device':device})
     dataset_dict={}
     prioritized_dataset_dict={}
@@ -77,7 +82,7 @@ if __name__ == "__main__":
             data_points = []
             prioritized_data_points = []
             single_map = map_dict[key]
-            log.info(f'generating data for map {key}')
+            #log.info(f'generating data for map {key}')
             env = gridWorld(configs['env'],single_map)
             team = MRS(configs)
             team.reset()
@@ -128,6 +133,7 @@ if __name__ == "__main__":
                             dist_array[i,j] = len(path)
                     
                     processed_agent=[]
+                    
                     for _ in range(agents_pos.shape[0]):
 
                         linear_index = torch.argmin(dist_array)
@@ -198,10 +204,12 @@ if __name__ == "__main__":
                 # store datapoint
                 # adapt tensor to int tensor
                 
+                
                 data_point={'obs':obs.numpy().astype(int),
                             'agent_pos':agent_pos.astype(int),
                             'grid':env.grid.copy().astype(int),
-                            'actions':actions.astype(int)}
+                            'actions':actions.astype(int),
+                            'allocated_tasks':np.array(allocated_tasks).astype(int)}
                 if store_history:
                     history_position.append(agent_pos)
                     data_point.update({'history_position':history_position.copy()})
@@ -235,7 +243,8 @@ if __name__ == "__main__":
             if args.render and key=='0' and k==0:
                 imageio.mimsave(dir+'map0.gif', frames, 'GIF', duration=1)
 
-    # save the dataset_dict to json file
+    # # save the dataset_dict to json file
     # torch.save(dataset_dict,dir+'dataset_dict.pt')
     # torch.save(prioritized_dataset_dict,dir+'prioritized_dataset_dict.pt')
+    
     log.info(f'dataset saved to {dir}')
