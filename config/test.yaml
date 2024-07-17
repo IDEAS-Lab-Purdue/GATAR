@@ -15,14 +15,20 @@ initialization:
 env:
   num_targets: 20
   random_start: True
-  num_agents: 3
+  num_agents: 2
   comm_range: 6
   grid_size:
     x: &x 15
     y: &y 15
   sub_groups:
     side_division: 3
-    group_obstacle_matrix: [[0,0,0],[0,0,10],[0,10,10]]
+    group_obstacle_matrix: 
+      - [[0,0,0],[0,0,0],[0,0,0]]
+      - [[5,5,5],[5,5,5],[5,5,5]]
+      - [[0,3,5],[0,3,3],[0,0,3]]
+      - [[5,3,0],[3,3,0],[3,0,0]]
+      - [[0,0,3],[0,3,3],[0,3,5]]
+      - [[3,0,0],[3,3,0],[5,3,0]]
   vis:
     mode: global&local
 
@@ -34,7 +40,7 @@ agent:
     max_speed: 1
   UGV1:
     type: UGV
-    num: 2
+    num: 1
     sensing_range: 4
     max_speed: 1
      

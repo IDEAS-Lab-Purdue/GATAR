@@ -241,6 +241,8 @@ class GATPlanner(nn.Module):
         C=x.shape[2]
         H=x.shape[3]
         W=x.shape[4]
+        
+        
         x=x.reshape(B*N,x.shape[2],x.shape[3],x.shape[4])
         
         if self.config['CNNEncoder']['enable']:
