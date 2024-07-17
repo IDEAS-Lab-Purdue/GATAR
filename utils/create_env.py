@@ -12,12 +12,12 @@ def assign_obstacles(params):
     subgroup_x_index = np.linspace(0,params['grid_size']['x'],params['sub_groups']['side_division']+1,dtype=int)
     subgroup_y_index = np.linspace(0,params['grid_size']['y'],params['sub_groups']['side_division']+1,dtype=int)
     
+    selected_obstacle_matrix = random.randint(0,len(params['sub_groups']['group_obstacle_matrix'])-1)
+            
     for i in range(params['sub_groups']['side_division']):
         for j in range(params['sub_groups']['side_division']):
-            if 'group_obstacle_matrix' not in params['sub_groups']:
-                num_obstacles = random.randint(0,params['obstacles']['max_num'])
-            else:
-                num_obstacles = params['sub_groups']['group_obstacle_matrix'][i][j]
+            
+            num_obstacles = params['sub_groups']['group_obstacle_matrix'][selected_obstacle_matrix][i][j]
             for k in range(num_obstacles):
                 obstacles.append([random.randint(subgroup_x_index[i],subgroup_x_index[i+1]-1),
                                     random.randint(subgroup_y_index[j],subgroup_y_index[j+1]-1)])
