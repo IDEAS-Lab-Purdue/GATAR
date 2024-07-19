@@ -20,8 +20,8 @@ import pickle
 def parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config',type=str,default='config/test.yaml')
-    parser.add_argument('--map_num',type=int,default=50)
-    parser.add_argument('--sample_per_map',type=int,default=2000)
+    parser.add_argument('--map_num',type=int,default=2000)
+    parser.add_argument('--sample_per_map',type=int,default=1000)
     parser.add_argument('--render',action='store_true',default=False)
     parser.add_argument('--load_pretrained',type=str,default=None)
     return parser.parse_args()
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
         env=gridWorld(configs['env'],map_dict[key])
         
-        for k in tqdm(range(args.sample_per_map)):
+        for k in range(args.sample_per_map):
 
             # randomly assigned targets number
 
@@ -233,13 +233,10 @@ if __name__ == "__main__":
                         'actions':actions}
             token=key+str(k)+str(time.time())
             token=hash(token)
-            dataset_dict.update({token:data_point})
-
-
+            with open(dir+'dataset_dict.pkl', 'ab') as f:
+                pickle.dump(data_point, f)
             
-    # dump the data points to file
-    with open(dir+'dataset_dict.pkl', 'wb') as f:
-        pickle.dump(dataset_dict, f)
+
 
 
 

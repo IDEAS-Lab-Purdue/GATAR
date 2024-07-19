@@ -2,9 +2,11 @@ env/__pycache__/*
 /data
 *.out
 */__pycache__*
-*.pyc
 /data_archived
 20target_agent_4_archived
 exp
 dataset
 arc_exp
+**.pyc
+utils/__pycache__/graphTools.cpython-37.pyc
+utils/__pycache__/__init__.cpython-37.pyc

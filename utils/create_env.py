@@ -39,7 +39,7 @@ def assign_targets(obstacles,params):
 def parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config',type=str,default='config/test.yaml')
-    parser.add_argument('--map_num',type=int,default=500)
+    parser.add_argument('--map_num',type=int,default=2000)
     return parser.parse_args()
 
 if __name__ == '__main__':

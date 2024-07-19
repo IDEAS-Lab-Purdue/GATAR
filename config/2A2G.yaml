@@ -1,0 +1,107 @@
+config_name: maps
+weight_decay: 0.0001
+lr: 0.00003
+batch_size: 512
+
+loss: MSE
+prior: False
+preprocess: 
+  enable: True
+  history: False
+  mul: True
+initialization:
+  type: kaiming
+
+env:
+  num_targets: 20
+  random_start: True
+  num_agents: 4
+  comm_range: 6
+  grid_size:
+    x: &x 15
+    y: &y 15
+  sub_groups:
+    side_division: 3
+    group_obstacle_matrix: 
+      - [[0,0,0],[0,0,0],[0,0,0]]
+      - [[5,5,5],[5,5,5],[5,5,5]]
+      - [[0,3,5],[0,3,3],[0,0,3]]
+      - [[5,3,0],[3,3,0],[3,0,0]]
+      - [[0,0,3],[0,3,3],[0,3,5]]
+      - [[3,0,0],[3,3,0],[5,3,0]]
+  vis:
+    mode: global&local
+
+agent:
+  UAV1:
+    type: UAV
+    num: 2
+    sensing_range: 4
+    max_speed: 1
+  UGV1:
+    type: UGV
+    num: 2
+    sensing_range: 4
+    max_speed: 1
+     
+network:
+  x: *x
+  y: *y
+  
+  CNNEncoder:
+    RES: False
+    input_channel: 3
+    output_channel: 3
+    channel: []
+    kernel_size: []
+    activation: relu
+    dropout: 0.05
+    batch_norm: True
+
+  Flatten:
+    activation: relu
+  
+  Fusion:
+    model: GAT
+    shortcut: True
+    attention_mode: KeyQuery
+    K: 2
+    heads: 4
+    input_feature: [900,32,4]
+    output_feature: [4,32,225]
+    activation: relu
+
+  CNNDecoder:
+
+    RES: True
+    channel_att: True
+    input_channel: 8
+    output_channel: 256
+    hidden_channel: [32,64]
+    kernel_size: [1,3,3]
+    activation: relu
+    dropout: 0.05
+    batch_norm: True
+  
+  MLP:
+    
+    output_feature: [256,128,2]
+    activation: relu
+    dropout: 0.05
+    batch_norm: True
+
+  action_head:
+    CNN:
+      input_channel: 3
+      output_channel: 1
+      hidden_channel: [16,16]
+      kernel_size: [1,3,1]
+      activation: relu
+      dropout: 0.05
+      batch_norm: True
+    
+    MLP:
+      output_feature: [225,128,2]
+      activation: relu
+      dropout: 0.05
+      batch_norm: True
