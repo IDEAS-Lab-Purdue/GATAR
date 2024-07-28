@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-#SBATCH -N 1 -n 16
+#SBATCH -N 1 -n 32
 #SBATCH --gpus-per-node=1
 #SBATCH --time=4:00:00
 
@@ -10,4 +10,10 @@ conda activate py37
 module load gcc
 
 # python test.py --exp exp/20target_w_o_prior_w_o_CNNencoder_batchnorm_dropout_0.05_agent_4/08-23-15-36-07 --data dataset/20target_w_prior_15x15_agent4
-python train.py --data_root dataset/end2end_homo_debug_15x15_agent3/
+# python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/maps_15x15_agent10
+# python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/3A1G_15x15_agent4
+# python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/3A2G_15x15_agent5
+# python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/3A3G_15x15_agent6
+python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/4A4G_15x15_agent8
+python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/5A5G_15x15_agent10
+python dataset_preprocess.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/6A6G_15x15_agent12

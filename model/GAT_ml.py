@@ -306,7 +306,7 @@ class GATPlanner(nn.Module):
         x=x.reshape(B,N,-1).permute(0,2,1)
         encoder_time=time.time()
         # GAT
-        
+        #print("x",x.shape)
         x=self.gat(x)
         gat_time=time.time()
         
@@ -333,13 +333,13 @@ class GATPlanner(nn.Module):
             x=x.reshape(B*N,-1)
 
         x=self.decoder_layer(x)
-        print(x.shape)
+        #print(x.shape)
         x=x.permute(0,2,3,1)
-        print(x.shape)
+        #print(x.shape)
         x=x.reshape(B*N*H*W,-1)
         x=self.MLP_layer(x)
         output=x.reshape(B,N,H,W,-1)
-        print(output.shape)
+        #print(output.shape)
         
         return output
     

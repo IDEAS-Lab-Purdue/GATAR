@@ -20,8 +20,8 @@ import pickle
 def parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config',type=str,default='config/test.yaml')
-    parser.add_argument('--map_num',type=int,default=2000)
-    parser.add_argument('--sample_per_map',type=int,default=1000)
+    parser.add_argument('--map_num',type=int,default=500)
+    parser.add_argument('--sample_per_map',type=int,default=500)
     parser.add_argument('--render',action='store_true',default=False)
     parser.add_argument('--load_pretrained',type=str,default=None)
     return parser.parse_args()

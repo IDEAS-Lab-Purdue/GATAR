@@ -1,4 +1,4 @@
-config_name: maps
+config_name: 4A4G
 weight_decay: 0.0001
 lr: 0.00003
 batch_size: 512

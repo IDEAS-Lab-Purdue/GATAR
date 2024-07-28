@@ -165,8 +165,14 @@ def val_epoch():
 def train():
     max_epoch = 5000
     best_loss=None
+    data_root_list = ['dataset/test_15x15_agent2',
+                      'dataset/test_15x15_agent4',
+                    'dataset/test_15x15_agent6',
+                    'dataset/test_15x15_agent8',
+                    'dataset/test_15x15_agent10']
     
     for epoch in tqdm(range(current_epoch,max_epoch)):
+        
         epoch_loss=train_epoch(epoch)
         tb_writer.add_scalar('train_loss',epoch_loss,epoch)
         scheduler.step()
