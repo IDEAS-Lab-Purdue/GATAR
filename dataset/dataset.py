@@ -47,18 +47,22 @@ class myDataset(torch.utils.data.Dataset):
         
 
     def __len__(self):
-        return len(self.data)
+        return len(self.obs)
     
 
 
     def __getitem__(self, index):
         obs = self.obs[index]
+        obs = torch.tensor(obs, dtype=torch.float32).permute(0,3,1,2)
         # N,2
         agent_pos = self.agent_pos[index]
+        agent_pos = torch.tensor(agent_pos, dtype=torch.float32)
+        
         # N,N
         adj = generate_adjacency_matrix(self.config['env']['comm_range'], agent_pos)
         adj = torch.tensor(adj, dtype=torch.float32)
         # N,2
         allocated_tasks = self.allocated_tasks[index]
         
-        return obs,adj,allocated_tasks
+        
+        return obs,adj,agent_pos,allocated_tasks

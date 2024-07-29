@@ -33,12 +33,13 @@ class Preprocessor(nn.Module):
         # input()
         output = torch.zeros(x.shape[0], c_new, x.shape[2], x.shape[3], device=x.device)
         output=[]
-        output.append(x[:,0,:,:])
-        output.append(self.create_target_map_batch(x[:,2,:,:]))
+        output.append(x[:,0,:,:]) # observation map 1 
+        output.append(self.create_target_map_batch(x[:,2,:,:])) # target map
         if self.extended_cost:
+            # not executed in our experiments
             output.append(self.create_extended_cost_map(x,observable_region))
         else:
-            output.append(self.create_cost_map_batch(x[:,1,:,:]))
+            output.append(self.create_cost_map_batch(x[:,1,:,:])) # cost map 2
 
 
 
@@ -48,6 +49,7 @@ class Preprocessor(nn.Module):
             output.append(output[1]*output[2])
 
         output=torch.stack(output,dim=1)
+        print(output.shape)
         
         return output
     

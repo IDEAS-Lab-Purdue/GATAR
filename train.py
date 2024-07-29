@@ -78,6 +78,7 @@ def train_epoch(epoch_num):
     epoch_loss=[]
     for i, data in tqdm(enumerate(train_loader)):
         obs,adj,pos,task = data
+        
         adj=adj.to(device)
         obs=obs.to(device)
         task=task.to(device)
@@ -88,10 +89,7 @@ def train_epoch(epoch_num):
         adj=adj.squeeze(1)
         SList=adj2SList(adj,config)
         model.add_graph(SList)
-        
-        #
         task_pred=model(obs)
-        
         
         
         # B*N*H*W*2
@@ -130,6 +128,7 @@ def val_epoch():
         distances=[]
         for i, data in enumerate(val_loader):
             obs,adj,pos,task = data
+            print(obs.shape,adj.shape,pos.shape,task.shape)
             adj=adj.to(device)
             obs=obs.to(device)
             task=task.to(device)
