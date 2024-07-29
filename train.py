@@ -128,7 +128,6 @@ def val_epoch():
         distances=[]
         for i, data in enumerate(val_loader):
             obs,adj,pos,task = data
-            print(obs.shape,adj.shape,pos.shape,task.shape)
             adj=adj.to(device)
             obs=obs.to(device)
             task=task.to(device)

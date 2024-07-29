@@ -56,13 +56,13 @@ class myDataset(torch.utils.data.Dataset):
         obs = torch.tensor(obs, dtype=torch.float32).permute(0,3,1,2)
         # N,2
         agent_pos = self.agent_pos[index]
-        agent_pos = torch.tensor(agent_pos, dtype=torch.float32)
         
         # N,N
         adj = generate_adjacency_matrix(self.config['env']['comm_range'], agent_pos)
         adj = torch.tensor(adj, dtype=torch.float32)
         # N,2
         allocated_tasks = self.allocated_tasks[index]
-        
+        allocated_tasks = torch.tensor(allocated_tasks, dtype=torch.float32)
+        agent_pos = torch.tensor(agent_pos, dtype=torch.float32)
         
         return obs,adj,agent_pos,allocated_tasks
