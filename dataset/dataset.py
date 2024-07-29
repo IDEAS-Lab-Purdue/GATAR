@@ -39,10 +39,15 @@ class myDataset(torch.utils.data.Dataset):
             self.agent_pos = agent_pos[:int(len(agent_pos)*0.8)]
             self.allocated_tasks = allocated_tasks[:int(len(allocated_tasks)*0.8)]
             
-        else:
+        elif phase == 'val':
             self.obs = obs[int(len(obs)*0.8):]
             self.agent_pos = agent_pos[int(len(agent_pos)*0.8):]
             self.allocated_tasks = allocated_tasks[int(len(allocated_tasks)*0.8):]
+        else:
+            self.obs = obs
+            self.agent_pos = agent_pos
+            self.allocated_tasks = allocated_tasks
+            
         
         
 
