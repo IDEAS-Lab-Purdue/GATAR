@@ -100,7 +100,7 @@ if __name__ == "__main__":
     log.info(f'test dataset size: {len(test_dataset)}')
 
 
-    batch_size = 4
+    batch_size = 1
     data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     model = GATPlanner(config)
     

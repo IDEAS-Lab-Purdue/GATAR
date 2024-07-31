@@ -9,4 +9,4 @@ source /home/peng374/.bashrc
 conda activate py37
 module load gcc
 
-python train.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/maps_15x15_agent2
+python train.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/maps_15x15_agent4

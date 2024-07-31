@@ -13,7 +13,7 @@ class Preprocessor(nn.Module):
             raise Exception("config is None")
         self.history=config['history']
         self.mul = config['mul']
-        self.extended_cost = config['extended_cost']
+        self.reward = config['reward']
         
         
 
@@ -27,36 +27,28 @@ class Preprocessor(nn.Module):
             c_new+=1
         if self.mul:
             c_new+=1
-        observable_region = torch.nonzero(x[:,0,:,:] >= 0)
-        # print(observable_region.shape)
-        # print(observable_region)
-        # input()
+        observable_region = x[:,0,:,:] >= 0
         output = torch.zeros(x.shape[0], c_new, x.shape[2], x.shape[3], device=x.device)
         output=[]
-        output.append(x[:,0,:,:]) # observation map 1 
+        output.append(x[:,0,:,:]) # obstacle
         output.append(self.create_target_map_batch(x[:,2,:,:])) # target map
-        if self.extended_cost:
+        if self.reward:
             # not executed in our experiments
-            output.append(self.create_extended_cost_map(x,observable_region))
+            output.append(self.create_reward_map_batch(x[:,1,:,:],observable_region))
         else:
-            output.append(self.create_cost_map_batch(x[:,1,:,:])) # cost map 2
+            output.append(x[:,1,:,:]) # cost map 2
 
-
-
-        if self.history:
-            output.append(self.create_target_map_batch(x[:,3,:,:],sigma_x=0.5,sigma_y=0.5))
         if self.mul:
             output.append(output[1]*output[2])
 
         output=torch.stack(output,dim=1)
-        print(output.shape)
         
         return output
     
     def create_history_map(self, x):
         pass
     
-    def create_cost_map_batch(self, bool_matrix, sigma_x=1, sigma_y=1):
+    def create_reward_map_batch(self, bool_matrix, observable_region, sigma_x=4, sigma_y=4):
         '''
         channel 1
         x: (B, H, W)
@@ -66,6 +58,7 @@ class Preprocessor(nn.Module):
 
         # find targets' positions
         target_positions = torch.nonzero(bool_matrix>0)
+        
         target_b, target_x, target_y = target_positions.split(1, dim=1)
         assert target_b.shape[0] == target_x.shape[0] == target_y.shape[0]
         N = target_b.shape[0]
@@ -94,23 +87,15 @@ class Preprocessor(nn.Module):
         #turn zero to one to avoid nan
         max_values[max_values==0]=1
         gaussian_matrix /= max_values
+        
+        
+        # mask the reward map with the observable region
+        gaussian_matrix = gaussian_matrix * observable_region
+            
 
 
         return gaussian_matrix
-
-
-    def create_extended_cost_map(self, observation,observable_region):
-        '''
-        observation: (1, C, H, W)
-        '''
-        assert observation.shape[0] == 1
-        ego_position = torch.nonzero(observation[0, 1, :, :] > 0)
-        targeted_position = torch.nonzero(observation[0, 2, :, :] > 0)
-        raise NotImplementedError
-        
-        
-        print(ego_position.shape)
-        
+ 
     
     def create_oc_map(self, x):
         raise NotImplementedError

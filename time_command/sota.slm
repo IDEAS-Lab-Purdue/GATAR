@@ -1,0 +1,14 @@
+#!/bin/bash
+
+
+#SBATCH -N 1 -n 32
+#SBATCH --gpus-per-node=1 --constraint=a100
+#SBATCH --time=04:00:00
+
+source /home/peng374/.bashrc
+conda activate py37
+module load gcc
+cd /scratch/gilbreth/peng374/Co-HetMRS
+
+
+python train.py --data_root /scratch/gilbreth/peng374/Co-HetMRS/dataset/maps_15x15_agent4 --con_train --exp_dir /scratch/gilbreth/peng374/Co-HetMRS/exp/maps_agent_4/with_preprocess

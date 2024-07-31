@@ -70,13 +70,9 @@ class GNOLayers(nn.Module):
         if self.in_features[-1] != self.out_features[0]:
             raise ValueError("Input and output feature dimensions don't match")
         self.K = config['K']
-        self.heads=[1]
-        for l in range(self.K):
-            self.heads.append(config['heads'])
         self.E=1
         self.bias=True
         self.SList=None
-        self.attentionMode=config['attention_mode']
         
         
 
@@ -87,7 +83,7 @@ class GNOLayers(nn.Module):
         
         for l in range(self.K):
             
-            layer=gml.GraphFilterBatchAttentional(self.in_features[l]*self.heads[l], self.in_features[l+1], 2, self.heads[l+1], self.E, self.bias,attentionMode=self.attentionMode)
+            layer=gml.GraphFilterBatch(self.in_features[l], self.in_features[l+1], 2, self.E, self.bias)
             
             downwardPass.append(layer)
             
@@ -97,20 +93,20 @@ class GNOLayers(nn.Module):
         # reversely iterate
         for l in range(self.K):
 
-            layer=gml.GraphFilterBatchAttentional(self.out_features[l]*self.heads[-l-1], self.out_features[l+1], 2,self.heads[-l-1], self.E, self.bias,attentionMode=self.attentionMode)
+            layer=gml.GraphFilterBatch(self.out_features[l], self.out_features[l+1], 2, self.E, self.bias)
             upwardPass.append(layer)
 
         shortcut = []
         self.use_shortcut=config['shortcut']
         if self.use_shortcut:
             for l in range(self.K):
-                layer=gml.GraphFilterBatchAttentional(self.in_features[l]*self.heads[l], self.out_features[-l-1], 2, self.heads[l+1], self.E, self.bias,attentionMode=self.attentionMode)
+                layer=gml.GraphFilterBatch(self.in_features[l], self.out_features[-l-1], 2, self.E, self.bias)
                 shortcut.append(layer)
-            
-            self.shortcut = nn.ModuleList(shortcut)
+                self.shortcut = nn.ModuleList(shortcut)
         
         self.downwardPass = nn.ModuleList(downwardPass)
         self.upwardPass = nn.ModuleList(upwardPass)
+        
 
     def addGSO(self, Slist):
         for l in range(self.K):
@@ -123,6 +119,7 @@ class GNOLayers(nn.Module):
     def forward(self,extractFeatureMap):
         # forwarding through GNO
         propagatingFeature = [extractFeatureMap]
+        #print(extractFeatureMap.shape)
         for l in range(self.K):
             # downward pass
             propagatingFeature.append(self.downwardPass[l](propagatingFeature[-1]))
@@ -141,10 +138,10 @@ class GNOLayers(nn.Module):
 
 
 
-class GATPlanner(nn.Module):
+class GNNPlanner(nn.Module):
 
     def __init__(self, config):
-        super(GATPlanner, self).__init__()
+        super(GNNPlanner, self).__init__()
         self.config = config['network']
         self.H=self.config['x']
         self.W=self.config['y']
@@ -152,8 +149,7 @@ class GATPlanner(nn.Module):
         self.preprocess=False
         if 'preprocess' in config.keys():
             self.preprocess=config['preprocess']['enable']
-            if self.preprocess:
-                self.preprocessor=Preprocessor(config['preprocess'])
+            self.preprocessor=Preprocessor(config['preprocess'])
             
         
         # create CNN encoder

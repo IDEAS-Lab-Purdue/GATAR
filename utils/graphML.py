@@ -6041,6 +6041,7 @@ class GraphFilterBatch(nn.Module):
 
     def forward(self, x):
         # x is of shape: batchSize x dimInFeatures x numberNodesIn
+        #print(x.shape)
         B = x.shape[0]
         F = x.shape[1]
         Nin = x.shape[2]

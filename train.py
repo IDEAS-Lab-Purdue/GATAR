@@ -5,6 +5,7 @@ import yaml
 import os
 from torch.utils.data import DataLoader
 from model.GAT_ml import GATPlanner
+from model.GNN_ml import GNNPlanner
 from utils.setupEXP import start as st
 import time
 from agent.preprocessor.HetPreprocessor import Preprocessor
@@ -189,7 +190,16 @@ def train():
                 log.info(f'best model saved at epoch {epoch}')
             torch.save(save_dict,os.path.join(exp_dir,f'epoch_{epoch}_model.pth'))
 
-        
+def load_state_dict_ignore_size_mismatch(model, state_dict):
+    own_state = model.state_dict()
+    for name, param in state_dict.items():
+        if name in own_state:
+            if own_state[name].size() == param.size():
+                own_state[name].copy_(param)
+            else:
+                print(f'Skip loading parameter {name}, required size: {own_state[name].size()}, loaded size: {param.size()}')
+        else:
+            print(f'Skip loading parameter {name}, not found in model.')     
     
 if __name__ == "__main__":
     args = parser()
@@ -224,12 +234,15 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True,num_workers=12,prefetch_factor=16)
     val_loader = DataLoader(val_dataset, batch_size=batch_size,shuffle=False,num_workers=12,prefetch_factor=16)
 
-    model = GATPlanner(config)
-    if "initialization" in config.keys() and not args.con_train:
+    if config['network']['Fusion']['model']=="GAT":
+        model = GATPlanner(config)
+    elif config['network']['Fusion']['model']=="GNN":
+        model = GNNPlanner(config)
+    if "initialization" in config.keys():
         model.init_params()
     if args.con_train:
         save_dict = torch.load(os.path.join(args.exp_dir,'last_model.pth'))
-        model.load_state_dict(save_dict['model_state_dict'])
+        load_state_dict_ignore_size_mismatch(model,save_dict['model_state_dict'])
         current_epoch = save_dict['epoch']
         log.info(f'continue training from epoch {current_epoch}')
     else:
