@@ -1,6 +1,6 @@
-# Co-HETMRS
+# GATAR
 
-> This is the repo for ICRA project
+
 
 ## Checking List
 
